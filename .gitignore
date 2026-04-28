@@ -30,3 +30,6 @@ examples/sessions/*.tmp
 
 # Local drafts
 marketing/
+
+# Reference clone of upstream (for picking, not committed)
+everything-claude-code/
