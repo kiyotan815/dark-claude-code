@@ -6,7 +6,11 @@
 - **PostToolUse**: After tool execution (auto-format, checks)
 - **Stop**: When session ends (final verification)
 
-## Current Hooks (in ~/.claude/settings.json)
+## Hook Registration
+
+Hooks live in `settings.json` — either project-scoped (`.claude/settings.json`) or user-global (`~/.claude/settings.json`). dark-claude-code ships a reference set in `hooks/hooks.json` that you copy/merge into the target `settings.json`.
+
+## Reference Hooks (shipped by dark-claude-code)
 
 ### PreToolUse
 - **tmux reminder**: Suggests tmux for long-running commands (npm, pnpm, yarn, cargo, etc.)

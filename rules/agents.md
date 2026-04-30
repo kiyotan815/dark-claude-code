@@ -2,7 +2,7 @@
 
 ## Available Agents
 
-Located in `~/.claude/agents/`:
+Located in `.claude/agents/` (project) or `~/.claude/agents/` (user-global). dark-claude-code ships these in `agents/`:
 
 | Agent | Purpose | When to Use |
 |-------|---------|-------------|
@@ -11,10 +11,14 @@ Located in `~/.claude/agents/`:
 | tdd-guide | Test-driven development | New features, bug fixes |
 | code-reviewer | Code review | After writing code |
 | security-reviewer | Security analysis | Before commits |
+| database-reviewer | PostgreSQL/SQL review | SQL, migrations, schema design |
 | build-error-resolver | Fix build errors | When build fails |
 | e2e-runner | E2E testing | Critical user flows |
 | refactor-cleaner | Dead code cleanup | Code maintenance |
 | doc-updater | Documentation | Updating docs |
+| spec-pragmatic | MVP-focused spec proposal (提案A) | Multi-perspective spec drafting |
+| spec-architect | Extensibility-focused spec proposal (提案B) | Multi-perspective spec drafting |
+| spec-ux | UX-focused spec proposal (提案C) | Multi-perspective spec drafting |
 
 ## Immediate Agent Usage
 
