@@ -46,7 +46,7 @@ rsync -av --update ~/hackcrackhack/dark-claude-code/rules/ ~/.claude/rules/
 |---|---|
 | `commands/` | スラッシュコマンド (22) |
 | `agents/` | サブエージェント (13) |
-| `skills/` | ワークフロー・ドメイン知識 (18) |
+| `skills/` | ワークフロー・ドメイン知識 (16) |
 | `hooks/` | フックスクリプト (4) |
 | `rules/` | 共通ルール (`~/.claude/rules/` へ配置) |
 | `mcp-configs/` | MCP サーバ設定例 |
