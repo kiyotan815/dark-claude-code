@@ -1,26 +1,24 @@
 {
-  "name": "everything-claude-code",
-  "version": "1.2.0",
-  "description": "Complete collection of battle-tested Claude Code configs from an Anthropic hackathon winner - agents, skills, hooks, and rules evolved over 10+ months of intensive daily use",
+  "name": "dark-claude-code",
+  "version": "0.1.0",
+  "description": "Personal Claude Code template curated for TS/Ruby/PHP development. Forked from affaan-m/everything-claude-code and customized for personal cp-based deployment.",
   "author": {
-    "name": "Affaan Mustafa",
-    "url": "https://x.com/affaanmustafa"
+    "name": "k1y0",
+    "url": "https://github.com/kiyotan815"
   },
-  "homepage": "https://github.com/affaan-m/everything-claude-code",
-  "repository": "https://github.com/affaan-m/everything-claude-code",
+  "homepage": "https://github.com/kiyotan815/dark-claude-code",
+  "repository": "https://github.com/kiyotan815/dark-claude-code",
   "license": "MIT",
   "keywords": [
     "claude-code",
+    "personal-template",
     "agents",
     "skills",
     "hooks",
-    "rules",
     "tdd",
-    "code-review",
-    "security",
-    "workflow",
-    "automation",
-    "best-practices"
+    "typescript",
+    "ruby",
+    "php"
   ],
   "skills": ["./skills/", "./commands/"],
   "agents": ["./agents/"]

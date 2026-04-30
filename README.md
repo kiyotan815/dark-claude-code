@@ -45,7 +45,7 @@ rsync -av --update ~/hackcrackhack/dark-claude-code/rules/ ~/.claude/rules/
 | パス | 役割 |
 |---|---|
 | `commands/` | スラッシュコマンド (22) |
-| `agents/` | サブエージェント (15) |
+| `agents/` | サブエージェント (13) |
 | `skills/` | ワークフロー・ドメイン知識 (18) |
 | `hooks/` | フックスクリプト (4) |
 | `rules/` | 共通ルール (`~/.claude/rules/` へ配置) |
