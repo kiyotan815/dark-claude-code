@@ -29,16 +29,16 @@ Backlog課題の取得から実装・PR作成・ステータス更新までを�
 4. コードベースを調査し、課題に関連する既存実装を把握
 5. **docs/ コンテキストの確認** -- `docs/README.md` でドキュメント構成を把握 (各 spec エージェントは内部で `docs/strategy/`, `docs/research/`, `docs/specs/current-state.md` を必ず Read する)
 6. 以下の **3つのエージェントを並列実行** して仕様案を生成:
-   - **spec-simple** (`.claude/agents/spec-simple.md`) - 案A: シンプル・最小実装 (docs/strategy/, docs/specs/current-state.md を参照)
-   - **spec-scalable** (`.claude/agents/spec-scalable.md`) - 案B: 拡張性・設計重視 (docs/research/ で将来の拡張方向を確認)
-   - **spec-conventional** (`.claude/agents/spec-conventional.md`) - 案C: 既存パターン踏襲 (docs/specs/current-state.md と既存コードを照合)
+   - **spec-pragmatic** (`.claude/agents/spec-pragmatic.md`) - 案A: 実用主義・MVP重視
+   - **spec-architect** (`.claude/agents/spec-architect.md`) - 案B: 設計重視・拡張性
+   - **spec-ux** (`.claude/agents/spec-ux.md`) - 案C: UX重視
    - 各エージェントには課題情報（サマリー、説明、受け入れ条件）とコードベースの関連箇所を渡す
    - **staging上の進行中変更との競合・重複リスク** も各エージェントに伝える
    - 各エージェントが docs を引用したかを最終比較表でも反映する (下記参照)
 6. 3案の結果を **比較表** にまとめて提示:
 
 ```
-| 観点 | 案A: シンプル | 案B: 拡張性重視 | 案C: 既存パターン |
+| 観点 | 案A: 実用主義 | 案B: 設計重視 | 案C: UX重視 |
 |------|-------------|---------------|----------------|
 | 概要 | | | |
 | DB変更 | | | |
