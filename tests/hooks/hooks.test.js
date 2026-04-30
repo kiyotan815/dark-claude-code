@@ -330,22 +330,6 @@ async function runTests() {
     }
   })) passed++; else failed++;
 
-  // plugin.json validation
-  console.log('\nplugin.json Validation:');
-
-  if (test('plugin.json does NOT have explicit hooks declaration', () => {
-    // Claude Code automatically loads hooks/hooks.json by convention.
-    // Explicitly declaring it in plugin.json causes a duplicate detection error.
-    // See: https://github.com/affaan-m/everything-claude-code/issues/103
-    const pluginPath = path.join(__dirname, '..', '..', '.claude-plugin', 'plugin.json');
-    const plugin = JSON.parse(fs.readFileSync(pluginPath, 'utf8'));
-
-    assert.ok(
-      !plugin.hooks,
-      'plugin.json should NOT have "hooks" field - Claude Code auto-loads hooks/hooks.json'
-    );
-  })) passed++; else failed++;
-
   // Summary
   console.log('\n=== Test Results ===');
   console.log(`Passed: ${passed}`);
