@@ -44,8 +44,8 @@ rsync -av --update ~/hackcrackhack/dark-claude-code/rules/ ~/.claude/rules/
 
 | パス | 役割 |
 |---|---|
-| `commands/` | スラッシュコマンド (29) |
-| `agents/` | サブエージェント (19) |
+| `commands/` | スラッシュコマンド (22) |
+| `agents/` | サブエージェント (15) |
 | `skills/` | ワークフロー・ドメイン知識 (18) |
 | `hooks/` | フックスクリプト (4) |
 | `rules/` | 共通ルール (`~/.claude/rules/` へ配置) |
@@ -103,11 +103,13 @@ Rails / Laravel 等 framework 特化 skill は必要になったら追加。
 
 ## カスタマイズ履歴 (2026-04)
 
-- **Tier A 逆輸入** — 実プロジェクト (p-mill / repohub) で蓄積した自作分（`write-spec`, `spec-*`, `commit-helper` 等）をテンプレートに集約
+- **Tier A 逆輸入** — 実プロジェクト (p-mill / repohub) から `commit-helper` `pr-helper` などの汎用スキルや spec-* agents を取り込み（後の精査で p-mill 特化分は除外）
 - **Tier B 削除** — Python / eval-driven dev は使用見込みなしで削除
 - **Tier C 削除** — Go / Java / Spring / Django / ClickHouse 関連を一括削除
 - **Phase 5 追加** — Ruby / PHP の patterns / testing skill を新規作成
-- **Cleanup** — upstream の assets 12MB / 翻訳 / ガイド類を削除（13MB → 1MB）
+- **Cleanup 1** — upstream の assets 12MB / 翻訳 / ガイド類を削除（13MB → 1MB）
+- **Cleanup 2** — spec-* agents を 7 → 3 に集約（RH 系の A/B/C 並列パターンに統一）
+- **Cleanup 3** — p-mill 特化 commands (backlog / write-spec / propose-feature / migrate / add-api 等) を template から除去（元 copy は p-mill に残存）
 
 ## メンテナンス指針
 
