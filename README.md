@@ -44,7 +44,7 @@ rsync -av --update ~/hackcrackhack/dark-claude-code/rules/ ~/.claude/rules/
 
 | パス | 役割 |
 |---|---|
-| `commands/` | スラッシュコマンド (22) |
+| `commands/` | スラッシュコマンド (25) |
 | `agents/` | サブエージェント (13) |
 | `skills/` | ワークフロー・ドメイン知識 (16) |
 | `hooks/` | フックスクリプト (4) |
@@ -100,6 +100,18 @@ Rails / Laravel 等 framework 特化 skill は必要になったら追加。
 1. 不要なものは `.claude/settings.json` の `disabledMcpServers` で無効化
 2. 必要なトークンのみ環境変数で供給
 3. 全 MCP 有効化はコンテキスト圧迫するので避ける
+
+## メモリ管理コマンド
+
+`~/.claude/projects/.../memory/` の永続メモリを扱う 3 コマンドを同梱（`~/.claude/commands/` と同内容）。
+
+| コマンド | 用途 |
+|---|---|
+| `/save-memory` | 直近の会話から保存候補を抽出して提案 |
+| `/memory-show` | 現在のメモリ内容を read-only で一覧 |
+| `/memory-clean` | 古い / 重複 / 誤ったメモリを監査し剪定提案 |
+
+新規プロジェクトで `commands/` を `cp` 配置すれば即利用可。
 
 ## カスタマイズ履歴 (2026-04)
 
