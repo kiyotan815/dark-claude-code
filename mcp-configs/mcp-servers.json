@@ -40,6 +40,11 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/your/projects"],
       "description": "Filesystem operations (set your path)"
+    },
+    "codex": {
+      "command": "codex",
+      "args": ["mcp-server"],
+      "description": "OpenAI Codex as MCP server (secondary path; prefer codex-delegate skill for delegation)"
     }
   },
   "_comments": {
