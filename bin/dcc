@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+#
+# dcc — dark-claude-code の host 側 wrapper。
+# devcontainer 起動 + Claude Code 起動を 1 コマンドにまとめ、
+# テンプレ展開・キット本体への改善 (PR 等) もここから行う。
+#
+# 使い方:
+#   dcc               # devcontainer up (未作成なら作成) + claude 起動
+#   dcc shell         # devcontainer up + bash で入る
+#   dcc up            # コンテナ起動のみ
+#   dcc rebuild       # コンテナ作り直し + claude 起動
+#   dcc init          # カレントプロジェクトへテンプレ + .devcontainer + AGENTS.md/CLAUDE.md を展開
+#   dcc sync          # キットのテンプレ差分を .claude/ へ反映 (rsync --update)
+#   dcc link-host     # host の ~/.claude / ~/.codex をキットへの symlink で構成（コンテナ不要運用）
+#   dcc kit [args]    # キット repo で claude を起動 (改善・PR 作成用)
+#   dcc <claude args> # 上記以外の引数はそのまま claude へ (例: dcc --continue)
+#
+# 本体はキット repo 内にあり、PATH 上には symlink を置く想定:
+#   ln -sf <kit>/bin/dcc ~/.local/bin/dcc
+set -euo pipefail
+
+KIT_ROOT="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/.." && pwd)"
+TEMPLATE_DIRS=(commands agents skills hooks mcp-configs)
+
+log() { printf '\033[36m[dcc]\033[0m %s\n' "$*"; }
+die() { printf 'dcc: %s\n' "$*" >&2; exit 1; }
+
+need_devcontainer() {
+  command -v devcontainer >/dev/null 2>&1 \
+    || die "devcontainer CLI が必要です: npm install -g @devcontainers/cli"
+}
+
+# .devcontainer/ を持つ最も近い親ディレクトリを workspace とする
+find_workspace() {
+  local dir="$PWD"
+  while [ "$dir" != "/" ]; do
+    if [ -f "$dir/.devcontainer/devcontainer.json" ]; then
+      printf '%s\n' "$dir"
+      return 0
+    fi
+    dir="$(dirname "$dir")"
+  done
+  die ".devcontainer/devcontainer.json が見つかりません (dcc init で展開できます)"
+}
+
+up() { need_devcontainer; devcontainer up --workspace-folder "$@"; }
+run_in() { need_devcontainer; exec devcontainer exec --workspace-folder "$@"; }
+
+deploy_templates() {
+  mkdir -p .claude
+  for d in "${TEMPLATE_DIRS[@]}"; do
+    if [ -d "$KIT_ROOT/$d" ]; then
+      rsync -a --update "$KIT_ROOT/$d/" ".claude/$d/"
+    fi
+  done
+  log "テンプレを .claude/ へ同期しました (source: $KIT_ROOT)"
+}
+
+# AGENTS.md を正とし、CLAUDE.md は symlink にして Claude / Codex で指示を共有する
+setup_agents_md() {
+  if [ ! -e AGENTS.md ] && [ ! -L AGENTS.md ]; then
+    if [ -e CLAUDE.md ]; then
+      ln -s CLAUDE.md AGENTS.md
+      log "AGENTS.md -> CLAUDE.md (symlink)"
+    else
+      printf '# AGENTS.md\n\nプロジェクト固有の指示をここに書く（Claude Code / Codex 共通。CLAUDE.md は symlink）。\n' > AGENTS.md
+      log "AGENTS.md を作成しました"
+    fi
+  fi
+  if [ ! -e CLAUDE.md ] && [ ! -L CLAUDE.md ]; then
+    ln -s AGENTS.md CLAUDE.md
+    log "CLAUDE.md -> AGENTS.md (symlink)"
+  fi
+}
+
+cmd_init() {
+  deploy_templates
+  if [ ! -d .devcontainer ]; then
+    cp -R "$KIT_ROOT/.devcontainer" .devcontainer
+    log ".devcontainer/ を配置しました"
+  fi
+  setup_agents_md
+  log "展開完了。'dcc' でコンテナ起動 + claude が立ち上がります"
+}
+
+# 既存の実体ファイルは退避してからキットへの symlink に置き換える
+link_item() {
+  local src="$1" dst="$2"
+  [ -e "$src" ] || return 0
+  if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
+    log "ok:   $dst (リンク済み)"
+    return 0
+  fi
+  if [ -e "$dst" ] || [ -L "$dst" ]; then
+    local bak
+    bak="$dst.pre-dcc.$(date +%Y%m%d%H%M%S)"
+    mv "$dst" "$bak"
+    log "退避: $dst -> $bak"
+  fi
+  ln -s "$src" "$dst"
+  log "link: $dst -> $src"
+}
+
+# mutable な設定（ツールが実行時に書き換えるもの）は初期値としてのみ配る
+copy_if_missing() {
+  local src="$1" dst="$2"
+  [ -e "$src" ] || return 0
+  if [ -e "$dst" ] || [ -L "$dst" ]; then
+    log "keep: $dst (既存を維持)"
+  else
+    cp "$src" "$dst"
+    log "copy: $dst (初期値)"
+  fi
+}
+
+cmd_link_host() {
+  mkdir -p "$HOME/.claude" "$HOME/.codex"
+  link_item "$KIT_ROOT/claude-global/CLAUDE.md"     "$HOME/.claude/CLAUDE.md"
+  link_item "$KIT_ROOT/claude-global/statusline.sh" "$HOME/.claude/statusline.sh"
+  link_item "$KIT_ROOT/rules"                       "$HOME/.claude/rules"
+  link_item "$KIT_ROOT/codex-global/AGENTS.md"      "$HOME/.codex/AGENTS.md"
+  copy_if_missing "$KIT_ROOT/claude-global/settings.json" "$HOME/.claude/settings.json"
+  copy_if_missing "$KIT_ROOT/codex-global/config.toml"    "$HOME/.codex/config.toml"
+  log "host のグローバル設定をキット参照にしました (source: $KIT_ROOT)"
+}
+
+cmd_kit() {
+  command -v claude >/dev/null 2>&1 \
+    || die "host に claude が必要です: npm install -g @anthropic-ai/claude-code"
+  cd "$KIT_ROOT"
+  exec claude "$@"
+}
+
+case "${1:-}" in
+  init)      cmd_init ;;
+  sync)      deploy_templates ;;
+  link-host) cmd_link_host ;;
+  kit)       shift; cmd_kit "$@" ;;
+  up)        up "$(find_workspace)" ;;
+  rebuild)   shift
+             ws="$(find_workspace)"
+             up "$ws" --remove-existing-container
+             run_in "$ws" claude "$@" ;;
+  shell)     shift
+             ws="$(find_workspace)"
+             up "$ws"
+             run_in "$ws" bash "$@" ;;
+  *)         ws="$(find_workspace)"
+             up "$ws"
+             run_in "$ws" claude "$@" ;;
+esac

@@ -21,6 +21,13 @@ Thumbs.db
 # Node
 node_modules/
 
+# devcontainer が .claude/ へ展開した配布物（生成物。source は root 直下）
+/.claude/commands/
+/.claude/agents/
+/.claude/skills/
+/.claude/hooks/
+/.claude/mcp-configs/
+
 # Personal configs (if any)
 personal/
 private/
