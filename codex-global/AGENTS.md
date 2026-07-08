@@ -1,0 +1,1 @@
+../claude-global/CLAUDE.md

@@ -1,0 +1,9 @@
+# Codex CLI グローバル設定（dark-claude-code の codex-global/ が正）
+# キー一覧: https://developers.openai.com/codex/config-reference
+# 認証 (auth.json) はここでは管理しない。volume 側に直接供給する（README 参照）
+
+# 破壊的操作は確認を求める
+approval_policy = "on-request"
+
+# 書き込みは workspace 内のみ許可
+sandbox_mode = "workspace-write"
