@@ -2,19 +2,18 @@
 
 ## Model Selection Strategy
 
-**Haiku 4.5** (lightweight, fast, low-cost):
+Pick by tier, not pinned version (version names go stale; use `haiku` / `sonnet` / `opus` aliases in agent frontmatter):
+
+**Haiku tier** (lightweight, fast, low-cost):
 - Lightweight agents with frequent invocation
-- Pair programming and code generation
 - Worker agents in multi-agent systems
 
-**Sonnet 4.6** (best coding model, balanced cost/quality):
+**Sonnet tier** (balanced cost/quality):
 - Main development work
 - Orchestrating multi-agent workflows
-- Complex coding tasks
 
-**Opus 4.7** (deepest reasoning, 1M context available):
+**Opus tier and above** (deepest reasoning):
 - Complex architectural decisions
-- Maximum reasoning requirements
 - Large-context research and analysis
 
 ## Context Window Management

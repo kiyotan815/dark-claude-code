@@ -306,7 +306,7 @@ async function runTests() {
     }
   })) passed++; else failed++;
 
-  if (test('script references use CLAUDE_PLUGIN_ROOT variable', () => {
+  if (test('script references use CLAUDE_PROJECT_DIR variable', () => {
     const hooksPath = path.join(__dirname, '..', '..', 'hooks', 'hooks.json');
     const hooks = JSON.parse(fs.readFileSync(hooksPath, 'utf8'));
 
@@ -314,11 +314,11 @@ async function runTests() {
       for (const entry of hookArray) {
         for (const hook of entry.hooks) {
           if (hook.type === 'command' && hook.command.includes('scripts/hooks/')) {
-            // Check for the literal string "${CLAUDE_PLUGIN_ROOT}" in the command
-            const hasPluginRoot = hook.command.includes('${CLAUDE_PLUGIN_ROOT}');
+            // Scripts are deployed to .claude/scripts/hooks/ and resolved via $CLAUDE_PROJECT_DIR
+            const hasProjectDir = hook.command.includes('$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/');
             assert.ok(
-              hasPluginRoot,
-              `Script paths should use CLAUDE_PLUGIN_ROOT: ${hook.command.substring(0, 80)}...`
+              hasProjectDir,
+              `Script paths should use $CLAUDE_PROJECT_DIR/.claude/scripts/hooks/: ${hook.command.substring(0, 80)}...`
             );
           }
         }

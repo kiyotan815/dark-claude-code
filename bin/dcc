@@ -20,7 +20,7 @@
 set -euo pipefail
 
 KIT_ROOT="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/.." && pwd)"
-TEMPLATE_DIRS=(commands agents skills hooks mcp-configs)
+TEMPLATE_DIRS=(commands agents skills hooks mcp-configs scripts/hooks)
 
 log() { printf '\033[36m[dcc]\033[0m %s\n' "$*"; }
 die() { printf 'dcc: %s\n' "$*" >&2; exit 1; }
@@ -50,6 +50,7 @@ deploy_templates() {
   mkdir -p .claude
   for d in "${TEMPLATE_DIRS[@]}"; do
     if [ -d "$KIT_ROOT/$d" ]; then
+      mkdir -p ".claude/$d"
       rsync -a --update "$KIT_ROOT/$d/" ".claude/$d/"
     fi
   done

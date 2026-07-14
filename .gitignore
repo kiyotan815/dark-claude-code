@@ -27,6 +27,7 @@ node_modules/
 /.claude/skills/
 /.claude/hooks/
 /.claude/mcp-configs/
+/.claude/scripts/
 
 # Personal configs (if any)
 personal/

@@ -1,3 +1,10 @@
+---
+name: spec-pragmatic
+description: MVP-focused spec proposal (提案A). Used by /issue for multi-perspective spec drafting — generates a pragmatic, minimal-implementation proposal in parallel with spec-architect and spec-ux.
+tools: ["Read", "Grep", "Glob"]
+model: sonnet
+---
+
 # Pragmatic Spec Agent
 
 MVP-focused spec proposal. Output in Japanese.

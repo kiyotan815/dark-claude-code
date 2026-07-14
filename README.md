@@ -18,16 +18,18 @@ Claude Code 用の個人テンプレート。
 
 ```bash
 cd <target-project>
-mkdir -p .claude
-cp -r ~/hackcrackhack/dark-claude-code/{commands,agents,skills,hooks,mcp-configs} .claude/
+mkdir -p .claude/scripts
+cp -r ~/dark-claude-code/{commands,agents,skills,hooks,mcp-configs} .claude/
+cp -r ~/dark-claude-code/scripts/hooks .claude/scripts/
 ```
 
 ### 既存プロジェクトに更新展開（既存ファイルを守る）
 
 ```bash
 cd <target-project>
-for d in commands agents skills hooks; do
-  rsync -av --update ~/hackcrackhack/dark-claude-code/$d/ .claude/$d/
+for d in commands agents skills hooks scripts/hooks; do
+  mkdir -p .claude/$d
+  rsync -av --update ~/dark-claude-code/$d/ .claude/$d/
 done
 ```
 
@@ -95,7 +97,7 @@ dcc            # devcontainer 起動（未作成なら作成）+ claude 起動
 
 VS Code / Cursor を使う場合は「Reopen in Container」でも同じ状態になる（`customizations.vscode` はその時だけ効く）。
 
-> hook 定義（`hooks/hooks.json`）は `${CLAUDE_PLUGIN_ROOT}` 前提のため `settings.json` へ自動マージはしない。有効化は後述「hook の有効化」を手動で行う。
+> hook 定義（`hooks/hooks.json`）は `settings.json` へ自動マージはしない。参照スクリプトは `$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/` を前提とする（`dcc sync` / 手動展開で配置される）。有効化は後述「hook の有効化」を手動で行う。
 > イメージは Node 24 固定。Ruby / PHP プロジェクトでは `devcontainer.json` の `image` を差し替える。
 
 ### コンテナ無し（host 直）での利用
@@ -149,7 +151,7 @@ Rails / Laravel 等 framework 特化 skill は必要になったら追加。
 
 - `/codex-spec <要件>` — Codex への委譲を前提とした設計書を作成。実装ユニットに分割し、各ユニットに成果物・受け入れ条件・境界・並列可否を明記する。作法は `skills/codex-spec` が定義。**委譲品質はこの設計書で決まる**
 - `/codex-impl <設計書 or タスク>` — 設計書のユニットを `codex exec` に委譲し、Claude が `git diff` とテスト実行で監査するまでを一括で行う。作法は `skills/codex-delegate` が定義（委譲プロンプトの書き方・worktree 並列・監査ループ）
-- 委譲の基本形は `codex exec -s workspace-write -C <dir> -o <log> "<タスク>"`。`--dangerously-bypass-approvals-and-sandbox` は使わない
+- 委譲の基本形は `codex exec -s workspace-write -C <dir> -o <最終メッセージファイル> "<タスク>" > <進捗ログ> 2>&1`。`--dangerously-bypass-approvals-and-sandbox` は使わない
 - プロジェクト指示は `AGENTS.md`（`CLAUDE.md` は symlink）が Claude / Codex の両方に効く
 - MCP 方式（従）: `claude mcp add -s user --transport stdio codex -- codex mcp-server`（`mcp-configs/` に定義あり）。単発のブロッキング呼び出しでコンテキストも消費するため、基本は skill 方式を推奨
 

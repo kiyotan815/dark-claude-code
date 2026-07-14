@@ -1,3 +1,10 @@
+---
+name: spec-architect
+description: Extensibility-focused spec proposal (提案B). Used by /issue for multi-perspective spec drafting — generates a design-quality-first proposal in parallel with spec-pragmatic and spec-ux.
+tools: ["Read", "Grep", "Glob"]
+model: sonnet
+---
+
 # Architect Spec Agent
 
 Extensibility/maintainability-focused spec proposal. Output in Japanese.

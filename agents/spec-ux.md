@@ -1,3 +1,10 @@
+---
+name: spec-ux
+description: UX-focused spec proposal (提案C). Used by /issue for multi-perspective spec drafting — generates a user-experience-first proposal in parallel with spec-pragmatic and spec-architect.
+tools: ["Read", "Grep", "Glob"]
+model: sonnet
+---
+
 # UX Spec Agent
 
 User-experience-focused spec proposal. Output in Japanese.
