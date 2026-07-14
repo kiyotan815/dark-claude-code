@@ -24,13 +24,14 @@ Claude Code（司令塔）が設計と監査を行い、OpenAI Codex CLI（実�
 ## 委譲の基本形
 
 ```bash
-codex exec -s workspace-write -C <作業ディレクトリ> -o <ログファイル> "<タスク>"
+codex exec -s workspace-write -C <作業ディレクトリ> -o <最終メッセージ.md> "<タスク>" > <進捗ログ.log> 2>&1
 ```
 
-- 実装タスク: `-s workspace-write`（既定で使う）
-- 調査・読み取りのみ: `-s read-only`
-- git repo 外での作業: `--skip-git-repo-check`
-- 長いタスクは Bash の background 実行にし、`-o` の最終メッセージで完了を検知する
+- 実装タスク: `-s workspace-write`（既定で使う）。調査・読み取りのみ: `-s read-only`。git repo 外: `--skip-git-repo-check`
+- **background 実行を既定にする** — フォアグラウンドだと完了まで何も見えない。stdout（Codex の思考・実行コマンドの生ログ）を進捗ログへリダイレクトし、`-o` は完了検知と結果回収に使う
+- **開始時に進捗ログのパスをユーザーへ伝える** — 別ターミナルで `tail -f <進捗ログ>` すれば生ログを追える
+- 実行中は適宜ログ末尾を読み、進捗（いま何をしているか・エラーの兆候）を短く報告する
+- **完了後ハングに注意**: codex exec は task_complete 後もプロセスが終了しないことがある。`-o` の最終メッセージファイルが書かれていたら完了とみなし、残プロセスは kill して先へ進む（成果物・セッションログはディスクに永続済みなので安全）
 - `--dangerously-bypass-approvals-and-sandbox` は使わない
 
 ## 委譲プロンプトの書き方（品質はここで決まる）
@@ -48,9 +49,9 @@ codex exec -s workspace-write -C <作業ディレクトリ> -o <ログファイ�
 ```bash
 git worktree add ../<proj>-task1 -b codex/task1
 git worktree add ../<proj>-task2 -b codex/task2
-# 各 worktree で background 実行
-codex exec -s workspace-write -C ../<proj>-task1 -o /tmp/task1.md "<タスク1>" &
-codex exec -s workspace-write -C ../<proj>-task2 -o /tmp/task2.md "<タスク2>" &
+# 各 worktree で background 実行（進捗ログ + 最終メッセージを分けて回収）
+codex exec -s workspace-write -C ../<proj>-task1 -o /tmp/task1-last.md "<タスク1>" > /tmp/task1.log 2>&1 &
+codex exec -s workspace-write -C ../<proj>-task2 -o /tmp/task2-last.md "<タスク2>" > /tmp/task2.log 2>&1 &
 ```
 
 全タスク完了後、worktree ごとに監査 → merge → `git worktree remove`。
