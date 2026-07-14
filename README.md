@@ -115,9 +115,9 @@ VS Code / Cursor を使う場合は「Reopen in Container」でも同じ状態�
 
 | パス | 役割 |
 |---|---|
-| `commands/` | スラッシュコマンド (26) |
+| `commands/` | スラッシュコマンド (28) |
 | `agents/` | サブエージェント (13) |
-| `skills/` | ワークフロー・ドメイン知識 (17) |
+| `skills/` | ワークフロー・ドメイン知識 (18) |
 | `hooks/` | フックスクリプト (4) |
 | `rules/` | 共通ルール (`~/.claude/rules/` へ配置) |
 | `claude-global/` | グローバル設定 (`CLAUDE.md` / `settings.json` / `statusline.sh` → `~/.claude/` へ配置) |
@@ -143,7 +143,12 @@ Rails / Laravel 等 framework 特化 skill は必要になったら追加。
 
 役割分担: **Claude Code = 司令塔（設計・タスク分割・監査）、Codex = 実行部隊（実装・テスト・環境構築）**。
 
-- `/codex-impl <設計書 or タスク>` — タスクを分割して `codex exec` に委譲し、Claude が `git diff` とテスト実行で監査するまでを一括で行う。作法は `skills/codex-delegate` が定義（委譲プロンプトの書き方・worktree 並列・監査ループ）
+推奨パイプライン: `/codex-spec` → `/codex-impl` → 監査。一気通貫でよければ `/codex-flow`。
+
+- `/codex-flow <タスク>` — 設計 → 委譲実装 → 監査を1コマンドで完走（自動 commit はしない。末尾で確認）。中規模までの明確なタスク向けで、大物・高リスクは 2 段階運用でレビューを挟む
+
+- `/codex-spec <要件>` — Codex への委譲を前提とした設計書を作成。実装ユニットに分割し、各ユニットに成果物・受け入れ条件・境界・並列可否を明記する。作法は `skills/codex-spec` が定義。**委譲品質はこの設計書で決まる**
+- `/codex-impl <設計書 or タスク>` — 設計書のユニットを `codex exec` に委譲し、Claude が `git diff` とテスト実行で監査するまでを一括で行う。作法は `skills/codex-delegate` が定義（委譲プロンプトの書き方・worktree 並列・監査ループ）
 - 委譲の基本形は `codex exec -s workspace-write -C <dir> -o <log> "<タスク>"`。`--dangerously-bypass-approvals-and-sandbox` は使わない
 - プロジェクト指示は `AGENTS.md`（`CLAUDE.md` は symlink）が Claude / Codex の両方に効く
 - MCP 方式（従）: `claude mcp add -s user --transport stdio codex -- codex mcp-server`（`mcp-configs/` に定義あり）。単発のブロッキング呼び出しでコンテキストも消費するため、基本は skill 方式を推奨
