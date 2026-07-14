@@ -19,6 +19,8 @@ Located in `.claude/agents/` (project) or `~/.claude/agents/` (user-global). dar
 | spec-pragmatic | MVP-focused spec proposal (提案A) | Multi-perspective spec drafting |
 | spec-architect | Extensibility-focused spec proposal (提案B) | Multi-perspective spec drafting |
 | spec-ux | UX-focused spec proposal (提案C) | Multi-perspective spec drafting |
+| spec-reviewer | Codex delegation spec review | /codex-flow design gate, before delegating |
+| codex-auditor | Audit of Codex deliverables | After /codex-impl, before commit |
 
 ## Immediate Agent Usage
 

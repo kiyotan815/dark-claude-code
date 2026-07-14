@@ -4,42 +4,19 @@
 
 ```
 <type>: <description>
-
-<optional body>
 ```
 
-Types: feat, fix, refactor, docs, test, chore, perf, ci
-
-Note: Attribution disabled globally via ~/.claude/settings.json.
+Types: feat, fix, refactor, docs, test, chore, perf, ci.
+Attribution is disabled globally via ~/.claude/settings.json.
 
 ## Pull Request Workflow
 
-When creating PRs:
-1. Analyze full commit history (not just latest commit)
-2. Use `git diff [base-branch]...HEAD` to see all changes
-3. Draft comprehensive PR summary
-4. Include test plan with TODOs
-5. Push with `-u` flag if new branch
+1. Analyze the full commit history, not just the latest commit
+   (`git diff [base-branch]...HEAD`)
+2. Draft a comprehensive PR summary with a test plan
+3. Push with `-u` for new branches
 
-## Feature Implementation Workflow
+## Feature Implementation Flow
 
-1. **Plan First**
-   - Use **planner** agent to create implementation plan
-   - Identify dependencies and risks
-   - Break down into phases
-
-2. **TDD Approach**
-   - Use **tdd-guide** agent
-   - Write tests first (RED)
-   - Implement to pass tests (GREEN)
-   - Refactor (IMPROVE)
-   - Verify 80%+ coverage
-
-3. **Code Review**
-   - Use **code-reviewer** agent immediately after writing code
-   - Address CRITICAL and HIGH issues
-   - Fix MEDIUM issues when possible
-
-4. **Commit & Push**
-   - Detailed commit messages
-   - Follow conventional commits format
+**planner** (plan/phases) → **tdd-guide** (tests first) →
+**code-reviewer** (fix CRITICAL/HIGH) → commit with conventional format

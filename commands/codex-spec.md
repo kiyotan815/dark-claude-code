@@ -1,3 +1,7 @@
+---
+description: Codex への委譲を前提に、実装ユニットへ分割した設計書を作成する（codex-spec skill 準拠）。
+---
+
 # Codex Spec
 
 $ARGUMENTS で渡された要件・機能名をもとに、Codex への委譲を前提とした設計書を作成する。

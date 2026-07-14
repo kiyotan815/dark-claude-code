@@ -1,3 +1,7 @@
+---
+description: Create or verify a workflow checkpoint to resume from later.
+---
+
 # Checkpoint Command
 
 Create or verify a checkpoint in your workflow.

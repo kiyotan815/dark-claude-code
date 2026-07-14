@@ -1,3 +1,7 @@
+---
+description: GitHub Issue から spec-pragmatic / spec-architect / spec-ux の3提案を並列生成し、選択された案で実装へ進む。
+---
+
 # Issue Implementation Flow
 
 Automated spec generation for GitHub Issue #$ARGUMENTS.

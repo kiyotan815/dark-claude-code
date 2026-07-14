@@ -1,3 +1,7 @@
+---
+description: Sync READMEs and guides from source-of-truth code and codemaps.
+---
+
 # Update Documentation
 
 Sync documentation from source-of-truth:

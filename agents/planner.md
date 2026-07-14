@@ -1,6 +1,6 @@
 ---
 name: planner
-description: Expert planning specialist for complex features and refactoring. Use PROACTIVELY when users request feature implementation, architectural changes, or complex refactoring. Automatically activated for planning tasks.
+description: Implementation planning specialist for breaking work into executable steps - task decomposition, dependency ordering, and phase splitting for features and refactors. Use PROACTIVELY when an approach is decided and needs an actionable step-by-step plan. NOT for system structure, technology selection, or ADR-level design decisions; use the architect agent for those.
 tools: ["Read", "Grep", "Glob"]
 model: opus
 ---

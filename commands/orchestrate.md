@@ -1,3 +1,7 @@
+---
+description: Run a sequential multi-agent workflow (feature / bugfix / refactor / security) with handoff documents between agents.
+---
+
 # Orchestrate Command
 
 Sequential agent workflow for complex tasks.

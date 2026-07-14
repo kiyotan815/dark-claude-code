@@ -118,8 +118,8 @@ VS Code / Cursor を使う場合は「Reopen in Container」でも同じ状態�
 | パス | 役割 |
 |---|---|
 | `commands/` | スラッシュコマンド (28) |
-| `agents/` | サブエージェント (13) |
-| `skills/` | ワークフロー・ドメイン知識 (18) |
+| `agents/` | サブエージェント (15) |
+| `skills/` | ワークフロー・ドメイン知識 (16) |
 | `hooks/` | フックスクリプト (4) |
 | `rules/` | 共通ルール (`~/.claude/rules/` へ配置) |
 | `claude-global/` | グローバル設定 (`CLAUDE.md` / `settings.json` / `statusline.sh` → `~/.claude/` へ配置) |

@@ -2,7 +2,7 @@
 name: tdd-guide
 description: Test-Driven Development specialist enforcing write-tests-first methodology. Use PROACTIVELY when writing new features, fixing bugs, or refactoring code. Ensures 80%+ test coverage.
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
-model: opus
+model: sonnet
 ---
 
 You are a Test-Driven Development (TDD) specialist who ensures all code is developed test-first with comprehensive coverage.
@@ -138,11 +138,14 @@ import { test, expect } from '@playwright/test'
 test('user can search and view market', async ({ page }) => {
   await page.goto('/')
 
-  // Search for market
+  // Search for market — wait for the actual response, never a fixed timeout
+  const searchResponse = page.waitForResponse(
+    (response) => response.url().includes('/api/markets/search') && response.ok()
+  )
   await page.fill('input[placeholder="Search markets"]', 'election')
-  await page.waitForTimeout(600) // Debounce
+  await searchResponse
 
-  // Verify results
+  // Verify results (expect polls until the assertion passes)
   const results = page.locator('[data-testid="market-card"]')
   await expect(results).toHaveCount(5, { timeout: 5000 })
 
@@ -220,26 +223,26 @@ Before marking tests complete:
 
 ## Test Smells (Anti-Patterns)
 
-### ❌ Testing Implementation Details
+### Anti-pattern: Testing Implementation Details
 ```typescript
 // DON'T test internal state
 expect(component.state.count).toBe(5)
 ```
 
-### ✅ Test User-Visible Behavior
+### Preferred: Test User-Visible Behavior
 ```typescript
 // DO test what users see
 expect(screen.getByText('Count: 5')).toBeInTheDocument()
 ```
 
-### ❌ Tests Depend on Each Other
+### Anti-pattern: Tests Depend on Each Other
 ```typescript
 // DON'T rely on previous test
 test('creates user', () => { /* ... */ })
 test('updates same user', () => { /* needs previous test */ })
 ```
 
-### ✅ Independent Tests
+### Preferred: Independent Tests
 ```typescript
 // DO setup data in each test
 test('updates user', () => {

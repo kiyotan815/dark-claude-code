@@ -1,3 +1,7 @@
+---
+description: Run the full verification loop (build, types, lint, tests, console.log audit, git status) and report PASS/FAIL.
+---
+
 # Verification Command
 
 Run comprehensive verification on current codebase state.
