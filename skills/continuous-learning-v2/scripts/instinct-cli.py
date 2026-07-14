@@ -93,7 +93,7 @@ def load_all_instincts() -> list[dict]:
     for directory in [PERSONAL_DIR, INHERITED_DIR]:
         if not directory.exists():
             continue
-        for file in directory.glob("*.yaml"):
+        for file in sorted(list(directory.glob("*.md")) + list(directory.glob("*.yaml"))):
             try:
                 content = file.read_text()
                 parsed = parse_instinct_file(content)

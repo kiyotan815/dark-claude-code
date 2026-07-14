@@ -90,66 +90,56 @@ Session Activity
 
 ## Quick Start
 
-### 1. Enable Observation Hooks
+### With this kit (recommended)
 
-Add to your `~/.claude/settings.json`.
+Wiring is automatic:
 
-**If installed as a plugin** (recommended):
+1. `dcc link-host` symlinks this skill to `~/.claude/skills/continuous-learning-v2/`
+   (the devcontainer's `postCreate.sh` copies it to the same place).
+2. `claude-global/settings.json` ships the observation hooks
+   (UserPromptSubmit / PreToolUse / PostToolUse) plus a SessionStart hook that
+   launches the observer daemon.
+3. The observer wakes every `run_interval_minutes` (default 5), and once
+   `min_observations_to_analyze` (default 20) observations have accumulated it
+   runs a headless Haiku session that writes instincts to
+   `~/.claude/homunculus/instincts/personal/`.
 
-```json
-{
-  "hooks": {
-    "PreToolUse": [{
-      "matcher": "*",
-      "hooks": [{
-        "type": "command",
-        "command": "${CLAUDE_PLUGIN_ROOT}/skills/continuous-learning-v2/hooks/observe.sh pre"
-      }]
-    }],
-    "PostToolUse": [{
-      "matcher": "*",
-      "hooks": [{
-        "type": "command",
-        "command": "${CLAUDE_PLUGIN_ROOT}/skills/continuous-learning-v2/hooks/observe.sh post"
-      }]
-    }]
-  }
-}
-```
-
-**If installed manually** to `~/.claude/skills`:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [{
-      "matcher": "*",
-      "hooks": [{
-        "type": "command",
-        "command": "~/.claude/skills/continuous-learning-v2/hooks/observe.sh pre"
-      }]
-    }],
-    "PostToolUse": [{
-      "matcher": "*",
-      "hooks": [{
-        "type": "command",
-        "command": "~/.claude/skills/continuous-learning-v2/hooks/observe.sh post"
-      }]
-    }]
-  }
-}
-```
-
-### 2. Initialize Directory Structure
-
-The Python CLI will create these automatically, but you can also create them manually:
+Controls:
 
 ```bash
-mkdir -p ~/.claude/homunculus/{instincts/{personal,inherited},evolved/{agents,skills,commands}}
-touch ~/.claude/homunculus/observations.jsonl
+touch ~/.claude/homunculus/disabled   # pause observation (rm to resume)
+~/.claude/skills/continuous-learning-v2/agents/start-observer.sh status
+~/.claude/skills/continuous-learning-v2/agents/start-observer.sh analyze  # force one pass
 ```
 
-### 3. Use the Instinct Commands
+### Manual setup (without the kit)
+
+Copy this skill to `~/.claude/skills/continuous-learning-v2/` and add to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [{
+      "hooks": [{ "type": "command", "command": "\"$HOME/.claude/skills/continuous-learning-v2/hooks/observe.sh\" prompt" }]
+    }],
+    "PreToolUse": [{
+      "matcher": "*",
+      "hooks": [{ "type": "command", "command": "\"$HOME/.claude/skills/continuous-learning-v2/hooks/observe.sh\" pre" }]
+    }],
+    "PostToolUse": [{
+      "matcher": "*",
+      "hooks": [{ "type": "command", "command": "\"$HOME/.claude/skills/continuous-learning-v2/hooks/observe.sh\" post" }]
+    }],
+    "SessionStart": [{
+      "hooks": [{ "type": "command", "command": "\"$HOME/.claude/skills/continuous-learning-v2/agents/start-observer.sh\" start >/dev/null 2>&1" }]
+    }]
+  }
+}
+```
+
+Directories under `~/.claude/homunculus/` are created automatically by the hook and the CLI.
+
+### Use the Instinct Commands
 
 ```bash
 /instinct-status     # Show learned instincts with confidence scores
@@ -263,7 +253,8 @@ Hooks fire **100% of the time**, deterministically. This means:
 
 v2 is fully compatible with v1:
 - Existing `~/.claude/skills/learned/` skills still work
-- Stop hook still runs (but now also feeds into v2)
+- The SessionEnd evaluator (`scripts/hooks/evaluate-session.js`), which suggests
+  manual `/learn` extraction, still runs independently
 - Gradual migration path: run both in parallel
 
 ## Privacy

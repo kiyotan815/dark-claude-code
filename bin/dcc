@@ -115,10 +115,12 @@ copy_if_missing() {
 }
 
 cmd_link_host() {
-  mkdir -p "$HOME/.claude" "$HOME/.codex"
+  mkdir -p "$HOME/.claude/skills" "$HOME/.codex"
   link_item "$KIT_ROOT/claude-global/CLAUDE.md"     "$HOME/.claude/CLAUDE.md"
   link_item "$KIT_ROOT/claude-global/statusline.sh" "$HOME/.claude/statusline.sh"
   link_item "$KIT_ROOT/rules"                       "$HOME/.claude/rules"
+  # 学習システムはグローバル hook (settings.json) から参照されるため ~/.claude/skills に常設する
+  link_item "$KIT_ROOT/skills/continuous-learning-v2" "$HOME/.claude/skills/continuous-learning-v2"
   link_item "$KIT_ROOT/codex-global/AGENTS.md"      "$HOME/.codex/AGENTS.md"
   copy_if_missing "$KIT_ROOT/claude-global/settings.json" "$HOME/.claude/settings.json"
   copy_if_missing "$KIT_ROOT/codex-global/config.toml"    "$HOME/.codex/config.toml"

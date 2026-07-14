@@ -88,5 +88,49 @@
   "effortLevel": "xhigh",
   "tui": "fullscreen",
   "theme": "dark-daltonized",
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "s=\"$HOME/.claude/skills/continuous-learning-v2/hooks/observe.sh\"; [ -x \"$s\" ] && \"$s\" prompt; exit 0"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "s=\"$HOME/.claude/skills/continuous-learning-v2/hooks/observe.sh\"; [ -x \"$s\" ] && \"$s\" pre; exit 0"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "s=\"$HOME/.claude/skills/continuous-learning-v2/hooks/observe.sh\"; [ -x \"$s\" ] && \"$s\" post; exit 0"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "s=\"$HOME/.claude/skills/continuous-learning-v2/agents/start-observer.sh\"; [ -x \"$s\" ] && \"$s\" start >/dev/null 2>&1; exit 0"
+          }
+        ]
+      }
+    ]
+  }
 }

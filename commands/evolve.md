@@ -8,16 +8,16 @@ command: true
 
 ## Implementation
 
-Run the instinct CLI using the plugin root path:
-
-```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cli.py" evolve [--generate]
-```
-
-Or if `CLAUDE_PLUGIN_ROOT` is not set (manual installation):
+Run the instinct CLI (installed to `~/.claude/skills/` by `dcc link-host` / devcontainer):
 
 ```bash
 python3 ~/.claude/skills/continuous-learning-v2/scripts/instinct-cli.py evolve [--generate]
+```
+
+Or, if only deployed into the project:
+
+```bash
+python3 .claude/skills/continuous-learning-v2/scripts/instinct-cli.py evolve [--generate]
 ```
 
 Analyzes instincts and clusters related ones into higher-level structures:

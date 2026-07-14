@@ -8,16 +8,16 @@ command: true
 
 ## Implementation
 
-Run the instinct CLI using the plugin root path:
+Run the instinct CLI (installed to `~/.claude/skills/` by `dcc link-host` / devcontainer):
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cli.py" import <file-or-url> [--dry-run] [--force] [--min-confidence 0.7]
+python3 ~/.claude/skills/continuous-learning-v2/scripts/instinct-cli.py import <file-or-url> [--dry-run] [--force] [--min-confidence 0.7]
 ```
 
-Or if `CLAUDE_PLUGIN_ROOT` is not set (manual installation):
+Or, if only deployed into the project:
 
 ```bash
-python3 ~/.claude/skills/continuous-learning-v2/scripts/instinct-cli.py import <file-or-url>
+python3 .claude/skills/continuous-learning-v2/scripts/instinct-cli.py import <file-or-url>
 ```
 
 Import instincts from:

@@ -77,6 +77,15 @@ if [ -d "$REPO_ROOT/claude-global" ]; then
   fi
 fi
 
+# 5.5. 学習システム (continuous-learning-v2) -> ~/.claude/skills/
+#      （claude-global/settings.json のグローバル hook から参照される）
+if [ -d "$REPO_ROOT/skills/continuous-learning-v2" ]; then
+  log "Deploying continuous-learning-v2 -> ~/.claude/skills/"
+  copy_dir "$REPO_ROOT/skills/continuous-learning-v2" "$HOME_CLAUDE/skills/continuous-learning-v2"
+  chmod +x "$HOME_CLAUDE/skills/continuous-learning-v2/hooks/observe.sh" \
+           "$HOME_CLAUDE/skills/continuous-learning-v2/agents/start-observer.sh" 2>/dev/null || true
+fi
+
 # 6. codex-global/ -> ~/.codex/（config.toml / AGENTS.md。auth.json は含めない）
 if [ -d "$REPO_ROOT/codex-global" ]; then
   log "Deploying codex-global/ -> ~/.codex/"
@@ -85,7 +94,7 @@ fi
 
 # 7. root 直下にテンプレがある（= このキット自体を開いている）場合のみ .claude/ へ展開
 deployed=0
-for d in commands agents skills hooks mcp-configs; do
+for d in commands agents skills hooks mcp-configs scripts/hooks; do
   if [ -d "$REPO_ROOT/$d" ]; then
     copy_dir "$REPO_ROOT/$d" "$REPO_ROOT/.claude/$d"
     deployed=1

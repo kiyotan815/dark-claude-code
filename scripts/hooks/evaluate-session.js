@@ -21,10 +21,25 @@ const {
   log
 } = require('../lib/utils');
 
+async function readStdinJson() {
+  if (process.stdin.isTTY) {
+    return {};
+  }
+  let raw = '';
+  for await (const chunk of process.stdin) {
+    raw += chunk;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
 async function main() {
   // Get script directory to find config
   const scriptDir = __dirname;
-  const configFile = path.join(scriptDir, '..', '..', 'skills', 'continuous-learning', 'config.json');
+  const configFile = path.join(scriptDir, '..', '..', 'skills', 'continuous-learning-v2', 'config.json');
 
   // Default configuration
   let minSessionLength = 10;
@@ -49,8 +64,9 @@ async function main() {
   // Ensure learned skills directory exists
   ensureDir(learnedSkillsPath);
 
-  // Get transcript path from environment (set by Claude Code)
-  const transcriptPath = process.env.CLAUDE_TRANSCRIPT_PATH;
+  // Claude Code passes hook data (incl. transcript_path) via stdin JSON
+  const hookInput = await readStdinJson();
+  const transcriptPath = hookInput.transcript_path || process.env.CLAUDE_TRANSCRIPT_PATH;
 
   if (!transcriptPath || !fs.existsSync(transcriptPath)) {
     process.exit(0);
