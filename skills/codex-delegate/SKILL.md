@@ -61,8 +61,9 @@ codex exec -s workspace-write -C ../<proj>-task2 -o /tmp/task2-last.md "<タス�
 1. **Codex の自己申告を信じない** — `git diff` を自分で読む
 2. **テストを自分で実行する** — 受け入れ条件のコマンドを Claude 側で再実行
 3. NG の場合は修正を再委譲:
-   - 同一セッション継続: `codex exec resume --last "修正: <具体的な指摘>"`
-   - 文脈を変えたい場合は新規 `codex exec`
+   - 基本は新規 `codex exec`（前セッションの成果と修正指摘をプロンプトに含める）
+   - `codex exec resume --last` は限定的に使う。**worktree 委譲では使用禁止** — resume は元セッションの `-C <dir>` を引き継がず**シェルの cwd で実行される**ため、メインの作業ツリーに別実装を書き込んで汚染する（codex-cli 0.144.2 で確認）。また並列委譲中は `--last` がどのセッションを指すか不定
+   - 汚染してしまった場合の復旧: `git checkout -- <誤変更ファイル>` + 未追跡の誤生成物を削除（正は worktree 側にある前提で消してよいか diff 確認してから）
 4. 2〜3 回の再委譲で収束しなければ、Claude が直接引き取って修正する
 5. OK になったら commit（コミットは Claude が行う。Codex にはさせない）
 
