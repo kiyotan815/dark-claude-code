@@ -1,0 +1,47 @@
+# Dependabot 設定。
+# 方針: PR を溜めないことを優先する。patch/minor はまとめて週1、major だけ個別に上げる。
+# patch の自動マージは Dependabot ではなくリポジトリ設定（auto-merge + CI 必須化）で行う。
+version: 2
+
+updates:
+  # lint ツール群（eslint / markdownlint）
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      # patch/minor は1本のPRにまとめる。個別に上げる価値がない
+      dev-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    # major は grouping から外れて個別PRになる（影響調査が要るため）
+
+  # devcontainer の base image / features
+  - package-ecosystem: devcontainers
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore
+
+  # GitHub Actions（workflow 追加後に有効化される。未追加のうちは対象なし）
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns:
+          - "*"
