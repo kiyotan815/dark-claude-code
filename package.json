@@ -2,7 +2,7 @@
   "name": "dark-claude-code",
   "private": true,
   "scripts": {
-    "validate": "claude plugin validate . && node scripts/ci/validate-agents.js && node scripts/ci/validate-commands.js && node scripts/ci/validate-skills.js && node scripts/ci/validate-rules.js",
+    "validate": "if command -v claude >/dev/null; then claude plugin validate .; else echo 'skip: claude CLI not found'; fi && node scripts/ci/validate-agents.js && node scripts/ci/validate-commands.js && node scripts/ci/validate-skills.js && node scripts/ci/validate-rules.js",
     "lint": "eslint . && markdownlint '**/*.md' --ignore node_modules --ignore everything-claude-code",
     "test": "npm run validate && npm run lint"
   },

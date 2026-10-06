@@ -16,6 +16,7 @@ fi
 
 # Project root: Claude Code exports CLAUDE_PROJECT_DIR to hook processes
 WORK_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+WORK_DIR="${WORK_DIR%/}"
 
 # Symlink check (Read/Edit/Write tools only)
 if [ "$tool_name" != "Bash" ] && [ -n "$target" ]; then
@@ -31,7 +32,7 @@ if [ "$tool_name" != "Bash" ] && [ -n "$target" ]; then
     fi
 
     # Block if resolved path is outside working directory
-    if [[ "$resolved_path" != "$WORK_DIR"* ]] && [[ "$resolved_path" != "/tmp/claude"* ]]; then
+    if [[ "$resolved_path" != "$WORK_DIR" && "$resolved_path" != "$WORK_DIR"/* ]] && [[ "$resolved_path" != "/tmp/claude"* ]]; then
       echo "{\"decision\": \"block\", \"reason\": \"Symlink points outside working directory: $target -> $resolved_path\"}"
       exit 0
     fi
@@ -104,7 +105,7 @@ if [[ "$target" == ~* ]] || [[ "$target" == *"~/"* ]]; then
 fi
 
 # 2. For absolute paths, block access outside working directory
-if [[ "$target" == /* ]] && [[ "$target" != "$WORK_DIR"* ]] && [[ "$target" != "/tmp/claude"* ]] && [[ "$target" != "/dev/"* ]]; then
+if [[ "$target" == /* ]] && [[ "$target" != "$WORK_DIR" && "$target" != "$WORK_DIR"/* ]] && [[ "$target" != "/tmp/claude"* ]] && [[ "$target" != "/dev/"* ]]; then
   echo "{\"decision\": \"block\", \"reason\": \"Access outside working directory is prohibited: $target\"}"
   exit 0
 fi

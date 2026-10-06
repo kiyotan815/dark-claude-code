@@ -19,6 +19,9 @@
 #   ln -sf <kit>/bin/dcc ~/.local/bin/dcc
 set -euo pipefail
 
+# realpath が無い環境 (古い macOS) 向けフォールバック
+command -v realpath >/dev/null 2>&1 \
+  || realpath() { python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"; }
 KIT_ROOT="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/.." && pwd)"
 MARKETPLACE="dark-claude-code"   # .claude-plugin/marketplace.json の name
 PLUGIN="dcc@$MARKETPLACE"        # .claude-plugin/plugin.json の name @ marketplace
@@ -80,17 +83,23 @@ cmd_init() {
 
 # plugin の登録と install（冪等）。host ではキットのローカルパスを marketplace として登録するので、
 # キットを編集した内容がそのまま次のセッションに反映される（in-place load）
+# 注意: 出力は先に変数へ取る（pipefail 下で grep -q が先に閉じると SIGPIPE で偽になる）
 register_plugin() {
   need_claude
-  if claude plugin marketplace list 2>/dev/null | grep -q "$MARKETPLACE"; then
-    log "ok:   marketplace $MARKETPLACE (登録済み)"
+  local out
+  out="$(claude plugin marketplace list 2>/dev/null || true)"
+  if grep -qE "(^|[[:space:]])${MARKETPLACE}([[:space:]]|$)" <<<"$out"; then
+    log "ok:   marketplace $MARKETPLACE (登録済み。source を切り替えるなら: claude plugin marketplace remove $MARKETPLACE してから再実行)"
   else
-    claude plugin marketplace add "$KIT_ROOT"
+    claude plugin marketplace add "$KIT_ROOT" \
+      || die "marketplace の登録に失敗。再実行: claude plugin marketplace add $KIT_ROOT"
   fi
-  if claude plugin list 2>/dev/null | grep -q "$PLUGIN"; then
+  out="$(claude plugin list 2>/dev/null || true)"
+  if grep -qF "$PLUGIN" <<<"$out"; then
     log "ok:   plugin $PLUGIN (install 済み)"
   else
-    claude plugin install "$PLUGIN"
+    claude plugin install "$PLUGIN" \
+      || die "plugin の install に失敗。再実行: claude plugin install $PLUGIN"
   fi
 }
 

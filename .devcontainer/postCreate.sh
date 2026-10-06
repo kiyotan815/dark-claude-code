@@ -45,7 +45,8 @@ mkdir -p "$HOME_CLAUDE/rules" "$HOME_CODEX"
 
 # 2. Claude Code CLI / Codex CLI（常に @latest へ。既存コンテナでも postCreate 再実行で更新される）
 log "Installing/updating Claude Code CLI + Codex CLI (@latest)..."
-npm install -g @anthropic-ai/claude-code@latest @openai/codex@latest
+npm install -g @anthropic-ai/claude-code@latest @openai/codex@latest \
+  || log "warn: CLI の install/update に失敗（オフライン?）。既存の CLI があればそのまま続行"
 log "Claude Code CLI: $(claude --version 2>/dev/null || echo '?') / Codex CLI: $(codex --version 2>/dev/null || echo '?')"
 
 # 3. リポジトリ dev 依存（キットの lint / validate 用）
@@ -86,13 +87,16 @@ if command -v claude >/dev/null 2>&1; then
   else
     source_spec="$KIT_REPO"
   fi
-  if claude plugin marketplace list 2>/dev/null | grep -q "$MARKETPLACE"; then
+  # 出力は先に変数へ取る（pipefail 下で grep -q が先に閉じると SIGPIPE で偽になる）
+  out="$(claude plugin marketplace list 2>/dev/null || true)"
+  if grep -qE "(^|[[:space:]])${MARKETPLACE}([[:space:]]|$)" <<<"$out"; then
     log "marketplace $MARKETPLACE: already registered"
   else
     log "Registering marketplace $MARKETPLACE ($source_spec)..."
     claude plugin marketplace add "$source_spec" || log "warn: marketplace add failed (ネットワーク/認証を確認して再実行: claude plugin marketplace add $source_spec)"
   fi
-  if claude plugin list 2>/dev/null | grep -q "$PLUGIN"; then
+  out="$(claude plugin list 2>/dev/null || true)"
+  if grep -qF "$PLUGIN" <<<"$out"; then
     log "plugin $PLUGIN: already installed"
   else
     claude plugin install "$PLUGIN" || log "warn: plugin install failed (再実行: claude plugin install $PLUGIN)"
