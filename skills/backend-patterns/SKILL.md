@@ -32,6 +32,9 @@ Repository interface live in rules/patterns.md — use them as-is.
 - Rate limit: 100 requests/min per IP, respond 429 when exceeded.
 - Retry: max 3 attempts, exponential backoff 1s/2s/4s.
 - Queries: explicit column lists, batch-fetch to avoid N+1, always `.limit()`.
+- Parsing AI-generated structured output: validate per item with zod and
+  coerce or drop the failing item; never discard the whole batch for one
+  bad field.
 
 ## Logging & Jobs
 

@@ -14,7 +14,7 @@
 ## Security Response Protocol
 
 If a security issue is found:
-1. STOP immediately and use the **security-reviewer** agent
+1. STOP immediately and use the **dcc:security-reviewer** agent
 2. Fix CRITICAL issues before continuing
 3. Rotate any exposed secrets
 4. Review the codebase for similar issues

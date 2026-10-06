@@ -1,0 +1,12 @@
+{
+  "name": "dark-claude-code",
+  "description": "k1y0 の個人キット。plugin 本体はこのリポジトリのルート",
+  "owner": { "name": "k1y0" },
+  "plugins": [
+    {
+      "name": "dcc",
+      "source": ".",
+      "description": "Claude ⇔ Codex ハイブリッド開発キット（codex-spec / codex-impl / codex-flow、code-review、vuln-fix、規約 skill）"
+    }
+  ]
+}

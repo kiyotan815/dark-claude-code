@@ -14,9 +14,8 @@ else
   target=$(echo "$input" | jq -r '.tool_input.file_path // ""')
 fi
 
-# Dynamically get working directory
-# Get project root (2 levels up from script location)
-WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Project root: Claude Code exports CLAUDE_PROJECT_DIR to hook processes
+WORK_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
 
 # Symlink check (Read/Edit/Write tools only)
 if [ "$tool_name" != "Bash" ] && [ -n "$target" ]; then

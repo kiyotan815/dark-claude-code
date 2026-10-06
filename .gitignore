@@ -21,7 +21,7 @@ Thumbs.db
 # Node
 node_modules/
 
-# devcontainer が .claude/ へ展開した配布物（生成物。source は root 直下）
+# 旧配布方式 (dcc sync) が .claude/ へ展開した残骸。plugin 化以降は生成されないので消してよい
 /.claude/commands/
 /.claude/agents/
 /.claude/skills/

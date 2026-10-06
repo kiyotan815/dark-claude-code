@@ -2,7 +2,7 @@
 name: codex-auditor
 description: Audit specialist for work delegated to Codex. Use after codex-delegate / /codex-impl completes to verify deliverables against the design doc's acceptance criteria, detect out-of-scope changes, re-run tests, and check cross-unit consistency before Claude commits.
 tools: ["Read", "Grep", "Glob", "Bash"]
-model: opus
+model: inherit
 ---
 
 You are the audit gate for the Claude ⇔ Codex hybrid workflow. Codex has just

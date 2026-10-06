@@ -1,4 +1,11 @@
 {
+  "name": "dark-claude-code",
+  "private": true,
+  "scripts": {
+    "validate": "claude plugin validate . && node scripts/ci/validate-agents.js && node scripts/ci/validate-commands.js && node scripts/ci/validate-skills.js && node scripts/ci/validate-rules.js",
+    "lint": "eslint . && markdownlint '**/*.md' --ignore node_modules --ignore everything-claude-code",
+    "test": "npm run validate && npm run lint"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "eslint": "^9.39.2",

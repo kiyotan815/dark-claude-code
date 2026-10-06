@@ -7,10 +7,10 @@ description: GitHub の脆弱性アラート（Dependabot / code scanning / secr
 GitHub Security タブの脆弱性を起点に、修正 PR の作成までを行う。`$ARGUMENTS`:
 
 ```
-/vuln-fix                    # open アラートを全部見て、修正計画を提示
-/vuln-fix critical high      # 深刻度で絞る
-/vuln-fix --alert 42         # 特定のアラート1件だけ修正
-/vuln-fix --report           # 修正せず一覧レポートのみ
+/dcc:vuln-fix                    # open アラートを全部見て、修正計画を提示
+/dcc:vuln-fix critical high      # 深刻度で絞る
+/dcc:vuln-fix --alert 42         # 特定のアラート1件だけ修正
+/dcc:vuln-fix --report           # 修正せず一覧レポートのみ
 ```
 
 **主対象は Dependabot security updates が自動修復できないもの。**
@@ -78,7 +78,7 @@ runtime かつ critical/high を最優先、development のみに閉じるもの
 | **transitive 解決** | 間接依存 & 親が未対応 | npm `overrides` / pnpm `overrides` / yarn `resolutions` / bundler は親を bump |
 | **破壊的変更あり** | patched 版が major 跨ぎ | 影響箇所を Grep で特定し、コード修正込みで対応 |
 | **パッチ未提供** | `first_patched_version` が null | 代替パッケージ・自前回避策・リスク受容の判断材料を出す |
-| **コード修正** | code scanning alert | 該当箇所を読んで修正（security-reviewer agent に妥当性を確認） |
+| **コード修正** | code scanning alert | 該当箇所を読んで修正（dcc:security-reviewer agent に妥当性を確認） |
 | **要ローテーション** | secret scanning alert | **自動修正しない**（後述） |
 
 破壊的変更を含む場合は、**そのパッケージの変更 API を自コードベースのどこで使っているか**を
@@ -122,7 +122,7 @@ VULNERABILITY REPORT — open: N件 (critical X / high Y / moderate Z / low W)
 - 数ファイル以内 → Claude が直接修正
 - 複数ファイルにまたがる / 並列化できる → **codex-delegate skill** で委譲し、
   **codex-auditor agent** で監査してから戻る
-- 修正後にビルドが壊れたら **build-error-resolver agent**
+- 修正後にビルドが壊れたら、エラーを 1 件ずつ直して都度検証する（rules/performance.md）
 
 ### secret scanning は例外
 
@@ -142,7 +142,7 @@ VULNERABILITY REPORT — open: N件 (critical X / high Y / moderate Z / low W)
 
 1. 依存を再インストールして lockfile が整合しているか確認
 2. テスト実行（回帰がないこと）
-3. `/verify` 相当の確認（build / 型 / lint）
+3. build / 型チェック / lint を 1 コマンドで連結して実行（rules/git-workflow.md）
 4. 可能なら再スキャン: `gh api /repos/{owner}/{repo}/dependabot/alerts` で
    対象アラートが消えるか（反映に時間差があるため、消えなくても失敗としない）
 
@@ -186,3 +186,12 @@ PR body に必ず含める:
 - パッチ未提供のものを「対応不能」で終わらせず、代替案（別パッケージ・自前回避・
   設定での無効化）を最低1つ提示する
 - アラートの dismiss（却下）は提案のみ。**コマンドから dismiss API を叩かない**
+
+---
+
+## 定期実行する場合
+
+`--report` は人手を介さないので routine 化できる。`/schedule` で
+「毎週月曜 9:00 に `/dcc:vuln-fix --report` を実行し、critical / high があれば
+Issue を立てる」のようなクラウド routine を作る。修正と PR 作成は人が確認する
+前提なので routine には入れない。

@@ -2,16 +2,16 @@
 #
 # dcc — dark-claude-code の host 側 wrapper。
 # devcontainer 起動 + Claude Code 起動を 1 コマンドにまとめ、
-# テンプレ展開・キット本体への改善 (PR 等) もここから行う。
+# キット (plugin) の登録・更新・キット本体への改善 (PR 等) もここから行う。
 #
 # 使い方:
 #   dcc               # devcontainer up (未作成なら作成) + claude 起動
 #   dcc shell         # devcontainer up + bash で入る
 #   dcc up            # コンテナ起動のみ
 #   dcc rebuild       # コンテナ作り直し + claude 起動
-#   dcc init          # カレントプロジェクトへテンプレ + .devcontainer + AGENTS.md/CLAUDE.md を展開
-#   dcc sync          # キットのテンプレ差分を .claude/ へ反映 (rsync --update)
-#   dcc link-host     # host の ~/.claude / ~/.codex をキットへの symlink で構成（コンテナ不要運用）
+#   dcc init          # カレントプロジェクトへ .devcontainer + AGENTS.md/CLAUDE.md を展開
+#   dcc link-host     # host の ~/.claude / ~/.codex をキット参照にし、plugin を登録・install（コンテナ不要運用）
+#   dcc sync          # marketplace / plugin を更新（GitHub 経由で install した環境向け）
 #   dcc kit [args]    # キット repo で claude を起動 (改善・PR 作成用)
 #   dcc <claude args> # 上記以外の引数はそのまま claude へ (例: dcc --continue)
 #
@@ -20,7 +20,8 @@
 set -euo pipefail
 
 KIT_ROOT="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/.." && pwd)"
-TEMPLATE_DIRS=(commands agents skills hooks mcp-configs scripts/hooks)
+MARKETPLACE="dark-claude-code"   # .claude-plugin/marketplace.json の name
+PLUGIN="dcc@$MARKETPLACE"        # .claude-plugin/plugin.json の name @ marketplace
 
 log() { printf '\033[36m[dcc]\033[0m %s\n' "$*"; }
 die() { printf 'dcc: %s\n' "$*" >&2; exit 1; }
@@ -28,6 +29,11 @@ die() { printf 'dcc: %s\n' "$*" >&2; exit 1; }
 need_devcontainer() {
   command -v devcontainer >/dev/null 2>&1 \
     || die "devcontainer CLI が必要です: npm install -g @devcontainers/cli"
+}
+
+need_claude() {
+  command -v claude >/dev/null 2>&1 \
+    || die "host に claude が必要です: npm install -g @anthropic-ai/claude-code"
 }
 
 # .devcontainer/ を持つ最も近い親ディレクトリを workspace とする
@@ -45,17 +51,6 @@ find_workspace() {
 
 up() { need_devcontainer; devcontainer up --workspace-folder "$@"; }
 run_in() { need_devcontainer; exec devcontainer exec --workspace-folder "$@"; }
-
-deploy_templates() {
-  mkdir -p .claude
-  for d in "${TEMPLATE_DIRS[@]}"; do
-    if [ -d "$KIT_ROOT/$d" ]; then
-      mkdir -p ".claude/$d"
-      rsync -a --update "$KIT_ROOT/$d/" ".claude/$d/"
-    fi
-  done
-  log "テンプレを .claude/ へ同期しました (source: $KIT_ROOT)"
-}
 
 # AGENTS.md を正とし、CLAUDE.md は symlink にして Claude / Codex で指示を共有する
 setup_agents_md() {
@@ -75,13 +70,35 @@ setup_agents_md() {
 }
 
 cmd_init() {
-  deploy_templates
   if [ ! -d .devcontainer ]; then
     cp -R "$KIT_ROOT/.devcontainer" .devcontainer
     log ".devcontainer/ を配置しました"
   fi
   setup_agents_md
-  log "展開完了。'dcc' でコンテナ起動 + claude が立ち上がります"
+  log "展開完了。skill / agent / command は plugin ($PLUGIN) が供給します（host: dcc link-host、コンテナ: postCreate が install）"
+}
+
+# plugin の登録と install（冪等）。host ではキットのローカルパスを marketplace として登録するので、
+# キットを編集した内容がそのまま次のセッションに反映される（in-place load）
+register_plugin() {
+  need_claude
+  if claude plugin marketplace list 2>/dev/null | grep -q "$MARKETPLACE"; then
+    log "ok:   marketplace $MARKETPLACE (登録済み)"
+  else
+    claude plugin marketplace add "$KIT_ROOT"
+  fi
+  if claude plugin list 2>/dev/null | grep -q "$PLUGIN"; then
+    log "ok:   plugin $PLUGIN (install 済み)"
+  else
+    claude plugin install "$PLUGIN"
+  fi
+}
+
+cmd_sync() {
+  need_claude
+  claude plugin marketplace update "$MARKETPLACE"
+  claude plugin update "$PLUGIN"
+  log "plugin を更新しました（起動中のセッションは /reload-plugins）"
 }
 
 # 既存の実体ファイルは退避してからキットへの symlink に置き換える
@@ -114,29 +131,42 @@ copy_if_missing() {
   fi
 }
 
+# 旧配布方式（キット内ファイルへの直接 symlink）の残骸を片付ける
+cleanup_legacy_links() {
+  local p
+  for p in "$HOME/.claude/skills/continuous-learning-v2" \
+           "$HOME/.claude/commands/save-memory.md" \
+           "$HOME/.claude/commands/memory-show.md" \
+           "$HOME/.claude/commands/memory-clean.md"; do
+    if [ -L "$p" ] && [ ! -e "$p" ]; then
+      rm "$p"
+      log "rm:   $p (キットから削除済みの symlink)"
+    fi
+  done
+}
+
 cmd_link_host() {
-  mkdir -p "$HOME/.claude/skills" "$HOME/.codex"
+  mkdir -p "$HOME/.claude" "$HOME/.codex"
   link_item "$KIT_ROOT/claude-global/CLAUDE.md"     "$HOME/.claude/CLAUDE.md"
   link_item "$KIT_ROOT/claude-global/statusline.sh" "$HOME/.claude/statusline.sh"
   link_item "$KIT_ROOT/rules"                       "$HOME/.claude/rules"
-  # 学習システムはグローバル hook (settings.json) から参照されるため ~/.claude/skills に常設する
-  link_item "$KIT_ROOT/skills/continuous-learning-v2" "$HOME/.claude/skills/continuous-learning-v2"
   link_item "$KIT_ROOT/codex-global/AGENTS.md"      "$HOME/.codex/AGENTS.md"
   copy_if_missing "$KIT_ROOT/claude-global/settings.json" "$HOME/.claude/settings.json"
   copy_if_missing "$KIT_ROOT/codex-global/config.toml"    "$HOME/.codex/config.toml"
-  log "host のグローバル設定をキット参照にしました (source: $KIT_ROOT)"
+  cleanup_legacy_links
+  register_plugin
+  log "host のグローバル設定をキット参照にし、plugin $PLUGIN を有効化しました (source: $KIT_ROOT)"
 }
 
 cmd_kit() {
-  command -v claude >/dev/null 2>&1 \
-    || die "host に claude が必要です: npm install -g @anthropic-ai/claude-code"
+  need_claude
   cd "$KIT_ROOT"
   exec claude "$@"
 }
 
 case "${1:-}" in
   init)      cmd_init ;;
-  sync)      deploy_templates ;;
+  sync)      cmd_sync ;;
   link-host) cmd_link_host ;;
   kit)       shift; cmd_kit "$@" ;;
   up)        up "$(find_workspace)" ;;

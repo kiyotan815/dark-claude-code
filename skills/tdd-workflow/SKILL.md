@@ -35,6 +35,14 @@ Workflow contract for all code changes. Core rules live in `rules/testing.md` an
 - No skipped/disabled tests at completion; full suite green.
 - Unit suite in watch mode during development; full suite + coverage in CI and pre-commit.
 
+## Prove the Test Bites
+
+For a critical invariant (tenant isolation, authorization, money), temporarily
+break the implementation on purpose, confirm the test fails, then restore the
+file and verify it is byte-identical (compare a checksum). A test that stays
+green through the mutation is not testing the invariant.
+
 ## Support
 
-- **tdd-guide** agent for new features, bug fixes, and failing-test troubleshooting; **e2e-runner** for E2E flows (see `rules/testing.md`).
+- Delegating to Codex: put "TDD 厳守" and the unit-specific test file at the top of the prompt (`dcc:codex-delegate` skill).
+- Review gate: `dcc:code-reviewer` agent after GREEN, before commit.

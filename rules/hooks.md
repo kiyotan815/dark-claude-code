@@ -1,19 +1,16 @@
 # Hooks System
 
 Hooks live in `settings.json` — project (`.claude/settings.json`) or
-user-global (`~/.claude/settings.json`). dark-claude-code ships a reference
-set in `hooks/hooks.json` (copy/merge manually; scripts deploy to
-`.claude/scripts/hooks/` via `dcc sync`).
+user-global (`~/.claude/settings.json`). The kit ships no always-on hooks.
 
-## Shipped Reference Hooks
+`hooks/check-sensitive-paths.sh` is opt-in: copy it into a project's
+`.claude/hooks/` and register it under `PreToolUse` with matcher
+`Bash|Read|Edit|Write`. It blocks parent-directory, home-directory, and
+non-origin git access for that project.
 
-- **PreToolUse**: tmux reminder for long commands; dev-server-outside-tmux
-  blocker; git push review reminder; stray .md/.txt doc blocker
-- **PostToolUse**: PR URL logging; Prettier auto-format; tsc check;
-  console.log warning
-- **Stop / SessionEnd**: console.log audit; session state persistence
-- **Learning system** (user-global settings): observation hooks + observer
-  auto-start — see `skills/continuous-learning-v2`
+Prefer the built-in Bash sandbox and `permissions.allow` / `deny` rules over
+custom hooks for access control. Add a hook only for a deterministic,
+project-specific check (lint on save, schema regeneration).
 
 ## Auto-Accept Permissions
 

@@ -618,9 +618,9 @@ Outcome: 2026/12/31 までに、有料プランで課金完了ユーザー1名�
 
 ## 12. 関連リンク
 
-- Notion MCP (Anthropic): https://github.com/anthropics/anthropic-quickstarts/tree/main/notion-mcp
-- Notion API Docs: https://developers.notion.com/
-- このプロジェクトの Company OS: https://www.notion.so/365b8c6e3a558150a515fa6a4c9567dd
+- Notion MCP (Anthropic): <https://github.com/anthropics/anthropic-quickstarts/tree/main/notion-mcp>
+- Notion API Docs: <https://developers.notion.com/>
+- このプロジェクトの Company OS: <https://www.notion.so/365b8c6e3a558150a515fa6a4c9567dd>
 - 絵本AI ロードマップ詳細: `docs/business/07-roadmap.md`
 
 ---

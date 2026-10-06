@@ -1,5 +1,5 @@
 ---
-description: Review uncommitted changes with the code-reviewer agent; escalate security-sensitive diffs to security-reviewer.
+description: Review uncommitted changes with the dcc:code-reviewer agent; escalate security-sensitive diffs to security-reviewer.
 ---
 
 # Code Review

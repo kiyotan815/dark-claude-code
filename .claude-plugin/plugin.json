@@ -1,0 +1,9 @@
+{
+  "name": "dcc",
+  "displayName": "dark-claude-code",
+  "description": "Claude ⇔ Codex ハイブリッド開発キット: Codex 委譲の設計・実装・監査ワークフロー、レビューゲート、チーム規約 skill",
+  "author": { "name": "k1y0" },
+  "repository": "https://github.com/kiyotan815/dark-claude-code",
+  "license": "MIT",
+  "keywords": ["codex", "review", "tdd", "workflow"]
+}

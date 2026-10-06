@@ -5,10 +5,10 @@
 Test types (ALL required):
 1. **Unit** - functions, utilities, components
 2. **Integration** - API endpoints, database operations
-3. **E2E** - critical user flows (e2e-runner agent)
+3. **E2E** - critical user flows (Playwright or agent-browser)
 
 TDD is mandatory — the workflow is defined in the global CLAUDE.md
-(RED → GREEN → REFACTOR); use the **tdd-guide** agent to enforce it.
+(RED → GREEN → REFACTOR); the `dcc:tdd-workflow` skill has the details.
 
 ## Troubleshooting Test Failures
 

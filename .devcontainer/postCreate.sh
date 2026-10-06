@@ -3,12 +3,13 @@
 # devcontainer 作成後セットアップ。
 # 目的: コンテナを開いたら Claude Code がすぐ使える状態にする。
 #   1. 永続化した ~/.claude / ~/.codex volume の所有者を修正
-#   2. Claude Code CLI / Codex CLI を global install
+#   2. Claude Code CLI / Codex CLI を global install（常に @latest へ更新）
 #   3. リポジトリの dev 依存 (eslint / markdownlint) を install
 #   4. rules/ を ~/.claude/rules/ へ配置
 #   5. claude-global/ (グローバル CLAUDE.md / settings.json / statusline.sh) を ~/.claude/ へ配置
 #   6. codex-global/ (config.toml / AGENTS.md) を ~/.codex/ へ配置
-#   7. テンプレート (commands 等) が root 直下にあれば .claude/ へ展開（このキット開発時のドッグフーディング用）
+#   7. キット plugin (dcc@dark-claude-code) を marketplace 登録 + install
+#      （このキット自体を開いている場合はローカルパス、それ以外は GitHub から）
 #
 set -euo pipefail
 
@@ -16,6 +17,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 HOME_CLAUDE="${HOME}/.claude"
 HOME_CODEX="${HOME}/.codex"
+KIT_REPO="kiyotan815/dark-claude-code"
+MARKETPLACE="dark-claude-code"
+PLUGIN="dcc@$MARKETPLACE"
 
 log() { printf '\033[36m[devcontainer]\033[0m %s\n' "$*"; }
 
@@ -39,27 +43,18 @@ for vol in "$HOME_CLAUDE" "$HOME_CODEX"; do
 done
 mkdir -p "$HOME_CLAUDE/rules" "$HOME_CODEX"
 
-# 2. Claude Code CLI / Codex CLI
-if command -v claude >/dev/null 2>&1; then
-  log "Claude Code CLI: already installed ($(claude --version 2>/dev/null || echo '?'))"
-else
-  log "Installing Claude Code CLI..."
-  npm install -g @anthropic-ai/claude-code
-fi
-if command -v codex >/dev/null 2>&1; then
-  log "Codex CLI: already installed ($(codex --version 2>/dev/null || echo '?'))"
-else
-  log "Installing Codex CLI..."
-  npm install -g @openai/codex
-fi
+# 2. Claude Code CLI / Codex CLI（常に @latest へ。既存コンテナでも postCreate 再実行で更新される）
+log "Installing/updating Claude Code CLI + Codex CLI (@latest)..."
+npm install -g @anthropic-ai/claude-code@latest @openai/codex@latest
+log "Claude Code CLI: $(claude --version 2>/dev/null || echo '?') / Codex CLI: $(codex --version 2>/dev/null || echo '?')"
 
-# 3. リポジトリ dev 依存（テンプレの lint / test 用）
+# 3. リポジトリ dev 依存（キットの lint / validate 用）
 if [ -f "$REPO_ROOT/package-lock.json" ]; then
   log "Installing npm dependencies (npm ci)..."
   (cd "$REPO_ROOT" && npm ci)
 fi
 
-# 4. rules/ -> ~/.claude/rules/（README の本来配置に合わせてグローバル）
+# 4. rules/ -> ~/.claude/rules/（グローバル配置。plugin には含まれない）
 if [ -d "$REPO_ROOT/rules" ]; then
   log "Deploying rules/ -> ~/.claude/rules/"
   copy_dir "$REPO_ROOT/rules" "$HOME_CLAUDE/rules"
@@ -77,33 +72,31 @@ if [ -d "$REPO_ROOT/claude-global" ]; then
   fi
 fi
 
-# 5.5. 学習システム (continuous-learning-v2) -> ~/.claude/skills/
-#      （claude-global/settings.json のグローバル hook から参照される）
-if [ -d "$REPO_ROOT/skills/continuous-learning-v2" ]; then
-  log "Deploying continuous-learning-v2 -> ~/.claude/skills/"
-  copy_dir "$REPO_ROOT/skills/continuous-learning-v2" "$HOME_CLAUDE/skills/continuous-learning-v2"
-  chmod +x "$HOME_CLAUDE/skills/continuous-learning-v2/hooks/observe.sh" \
-           "$HOME_CLAUDE/skills/continuous-learning-v2/agents/start-observer.sh" 2>/dev/null || true
-fi
-
 # 6. codex-global/ -> ~/.codex/（config.toml / AGENTS.md。auth.json は含めない）
 if [ -d "$REPO_ROOT/codex-global" ]; then
   log "Deploying codex-global/ -> ~/.codex/"
   copy_dir "$REPO_ROOT/codex-global" "$HOME_CODEX"
 fi
 
-# 7. root 直下にテンプレがある（= このキット自体を開いている）場合のみ .claude/ へ展開
-deployed=0
-for d in commands agents skills hooks mcp-configs scripts/hooks; do
-  if [ -d "$REPO_ROOT/$d" ]; then
-    copy_dir "$REPO_ROOT/$d" "$REPO_ROOT/.claude/$d"
-    deployed=1
+# 7. キット plugin を登録 + install（~/.claude volume に永続化されるので一度で済む）
+#    このキット自体を開いているときはローカルパスを使い、編集がそのまま反映される
+if command -v claude >/dev/null 2>&1; then
+  if [ -f "$REPO_ROOT/.claude-plugin/plugin.json" ] && grep -q '"name": *"dcc"' "$REPO_ROOT/.claude-plugin/plugin.json"; then
+    source_spec="$REPO_ROOT"
+  else
+    source_spec="$KIT_REPO"
   fi
-done
-if [ "$deployed" = "1" ]; then
-  log "Deployed templates -> .claude/ (dogfooding; gitignored)"
-else
-  log "No root-level templates found; assuming .claude/ is already populated"
+  if claude plugin marketplace list 2>/dev/null | grep -q "$MARKETPLACE"; then
+    log "marketplace $MARKETPLACE: already registered"
+  else
+    log "Registering marketplace $MARKETPLACE ($source_spec)..."
+    claude plugin marketplace add "$source_spec" || log "warn: marketplace add failed (ネットワーク/認証を確認して再実行: claude plugin marketplace add $source_spec)"
+  fi
+  if claude plugin list 2>/dev/null | grep -q "$PLUGIN"; then
+    log "plugin $PLUGIN: already installed"
+  else
+    claude plugin install "$PLUGIN" || log "warn: plugin install failed (再実行: claude plugin install $PLUGIN)"
+  fi
 fi
 
 log "Setup complete."

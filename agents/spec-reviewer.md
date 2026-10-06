@@ -2,7 +2,7 @@
 name: spec-reviewer
 description: Reviews Codex-delegation design docs (codex-spec output) before implementation starts. Use at the /codex-flow design gate to verify unit independence, acceptance-criteria verifiability, boundary clarity, and the parallel execution plan.
 tools: ["Read", "Grep", "Glob"]
-model: opus
+model: inherit
 ---
 
 You review design docs written for Codex delegation (produced by the
