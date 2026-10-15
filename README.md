@@ -27,6 +27,7 @@ plugin は user scope に入るので、**各プロジェクトに置くもの�
 
 - `.claude/` のうちキットが過去に配布したファイル（キット repo の git 履歴で判定）を一覧表示し、確認後に削除する。プロジェクト独自のファイル、`settings.json` から参照されている hook、プロジェクト側で改変されたファイルは残す（改変分は警告のみ。plugin と二重なので不要なら手で消す）
 - `.devcontainer/postCreate.sh` をキットの新版（plugin install 入り）に差し替える。改変されていれば上書きせず警告。`devcontainer.json` は触らない
+- `.claude/` 配下が symlink（dotfiles 共有など）のパスは削除先がプロジェクト外になるので対象外。キット repo が shallow clone だと由来を判定できないので掃除をスキップする（`git fetch --unshallow` で解消）
 - 何度実行しても安全。確認を省略するなら `dcc init -y`
 
 ### devcontainer
