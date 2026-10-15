@@ -21,6 +21,10 @@ dcc link-host
 
 `link-host` は `~/.claude/CLAUDE.md` / `~/.claude/rules/` / `~/.claude/statusline.sh` / `~/.codex/AGENTS.md` をキットへの symlink にし、`settings.json` / `config.toml` は無ければ初期値をコピーする。続けてキットのローカルパスを marketplace として登録し `dcc@dark-claude-code` を install する。**ローカルパス由来の plugin は in-place で読み込まれる**ので、キットを編集すれば次のセッション（または `/reload-plugins`）で反映される。
 
+plugin は user scope に入るので、**各プロジェクトに置くものは無い**。`cd <project> && claude` で `/dcc:*` と agent / skill が使える。プロジェクト固有の指示は `AGENTS.md` に書く（`CLAUDE.md` は symlink。`dcc init` が作る）。
+
+既存プロジェクトの `.claude/` との関係は「上書きではなく共存」。plugin は `dcc:` 名前空間なので、プロジェクト独自の command / agent / rules / hook はそのまま並んで動く。ただし旧 `dcc sync` がコピーしたキット由来のファイルが `.claude/commands` 等に残っていると `/code-review` と `/dcc:code-review` が二重に出るので削除する。
+
 ### devcontainer
 
 ```bash
@@ -32,14 +36,29 @@ dcc        # devcontainer up + claude 起動
 
 コンテナ内の `postCreate.sh` が CLI を `@latest` で入れ、`rules/` / `claude-global/` / `codex-global/` を `~/.claude` `~/.codex` volume に配り、plugin を GitHub（`kiyotan815/dark-claude-code`）から install する。volume は全プロジェクト共有なので一度で済む。
 
-### 手動 / 他のマシン
+### 他のマシン
+
+フル構成（グローバル `CLAUDE.md` / `rules/` / Codex 用 `AGENTS.md` を含む）にするなら clone して `dcc link-host`。上の host セットアップと同じ挙動（Codex への自動委譲ルール込み）になる:
+
+```bash
+git clone https://github.com/kiyotan815/dark-claude-code ~/dark-claude-code
+ln -sf ~/dark-claude-code/bin/dcc ~/.local/bin/dcc
+dcc link-host
+```
+
+command / agent / skill だけでよければ clone 不要で 2 行:
 
 ```bash
 claude plugin marketplace add kiyotan815/dark-claude-code
 claude plugin install dcc@dark-claude-code
 ```
 
-一時的に試すだけなら `claude --plugin-dir <このリポジトリ>`。GitHub 経由で install した環境の更新は `dcc sync`（= `claude plugin marketplace update` + `claude plugin update`）。
+この場合 `rules/` と `claude-global/CLAUDE.md` は入らないので、Codex 自動委譲の方針は効かない。更新は `claude plugin update dcc@dark-claude-code`（キットの clone がある環境は `dcc sync`）。一時的に試すだけなら `claude --plugin-dir <このリポジトリ>`。
+
+前提:
+
+- Codex への委譲を使うマシンには `codex` CLI と認証（`~/.codex/auth.json` か `OPENAI_API_KEY`）が必要
+- リポジトリが private なら、GitHub 経由の install（上の 2 行と devcontainer の postCreate）にそのマシンの GitHub 認証が必要。clone 経由（`dcc link-host`）は clone できれば動く
 
 ### dcc サブコマンド
 
@@ -155,10 +174,10 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 
 ### 2026-10 棚卸し・plugin 化
 
-- 1 年分の使用ログで未使用だった command 21 本・agent 11 本・参照用 hook 群・セッション管理スクリプトを削除
-- メモリ系 3 コマンド（save-memory / memory-show / memory-clean）は Claude Code 組み込みの auto-memory に置換
-- continuous-learning-v2（instinct 学習）は 341 件を回収して `codex-delegate` / `codex-spec` / rules に折り込んだ上で廃止。observer の失敗率と未回収が理由
-- 配布を `.claude/` へのコピーから plugin（`dcc@dark-claude-code`）へ移行。agent は `model: inherit`、rules からモデル tier 指定を削除
+- **使用ログで棚卸し**: 1 年分の入力履歴（`~/.claude/history.jsonl`）と直近のセッション記録で command / skill / agent の呼び出し回数を数え、実際に使われていた Codex 一式・code-review・pr-helper 以外を削除。command 29 → 6、agent 15 → 4、差分 103 ファイル・約 1 万行減。メモリ系 3 コマンドは組み込みの auto-memory に置換
+- **plugin 化**: `.claude/` へのコピー配布をやめ `dcc@dark-claude-code` として配る。host は `dcc link-host`（ローカルパス marketplace、in-place load）、devcontainer は postCreate が GitHub から install。`npm test` に `claude plugin validate` を追加
+- **学習系の回収と廃止**: continuous-learning-v2 が貯めた 341 件の instinct から高信頼の 13 項目（`codex exec` の stdin 閉じ・sandbox での失敗検知・worktree 並列と統合手順・設計書の書き方など）を `codex-delegate` / `codex-spec` / `tdd-workflow` skill に書き戻し、observer と hook を廃止。observer の失敗率と未回収が理由
+- **設定の現代化**: agent を `model: inherit` にしてモデル固定を外し、rules からモデル tier 指定を削除。`/dcc:plan` は組み込みの Plan agent を使う。rules とグローバル `CLAUDE.md` を `dcc:` 前提に書き直し、`bin/dcc` の pipefail / grep 境界の不具合を修正
 
 ### 2026-04
 
