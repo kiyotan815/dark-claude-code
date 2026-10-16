@@ -26,7 +26,7 @@ description: Supabase + Vercel（+ Next.js）構成の情報漏洩リスクを�
 4. **Layer C（Vercel / Next.js）** — `vercel env ls`、`vercel.json` の `crons` とハンドラの `CRON_SECRET` 検証、Next.js のバージョン（CVE-2025-29927）。Deployment Protection などダッシュボードでしか見えない項目は「人手で確認する項目」として残す
 5. **Layer D（GitHub）** — `/dcc:vuln-fix --report` と同じ `gh api` で Dependabot / secret scanning / code scanning の状態を取る。`gitleaks` があれば履歴をスキャンする
 6. `--probe` なら **Layer E** — skill の `probe.sh` を実行し、anon で読めるテーブルを A1〜A3 の所見と突合する
-7. **レポート** — `docs/security/audit-YYYY-MM-DD.md` を skill の形式で書く。所見は証拠 → 影響 → 修正（SQL / コード）。ユーザーには CRITICAL / HIGH の要約と、人手が要る確認（ダッシュボード項目・ローテーション）を箇条書きで返す
+7. **レポート** — `docs/security/audit-YYYY-MM-DD.md` を skill の形式で書く。所見は証拠 → 影響 → 修正（SQL / コード）。鍵本体や JWT 文字列は書かない（role と file:line だけ）。public リポジトリなら commit せず別の場所に保管する。ユーザーには CRITICAL / HIGH の要約と、人手が要る確認（ダッシュボード項目・ローテーション）を箇条書きで返す
 8. **修正は別作業** — RLS / GRANT は migration、コードは小さければ直接、まとまっていれば `/dcc:codex-spec` に渡す。修正後は Layer A と E を再実行して閉じる
 
 `--compare` は各リポジトリで手順 1〜6 を実行し、skill のチェックリスト表の列をプロダクトにした 1 本のレポートにする。3 リポジトリ以上なら Workflow（`ultracode`）での並列実行を提案する。
