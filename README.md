@@ -88,7 +88,7 @@ claude plugin install dcc@dark-claude-code
 
 plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `dcc:<name>` で参照する。
 
-### command（6）
+### command（7）
 
 | コマンド | 用途 |
 |---|---|
@@ -98,21 +98,22 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 | `/dcc:code-review` | 未コミット差分を `dcc:code-reviewer` でレビュー。要注意差分は `dcc:security-reviewer` へ |
 | `/dcc:plan <要件>` | 要件整理・リスク・フェーズ分割。確認を待ってから実装 |
 | `/dcc:vuln-fix` | GitHub Security アラート（Dependabot / code scanning / secret scanning）から修正 PR を作る。`--report` は routine 化向き |
+| `/dcc:security-audit` | Supabase + Vercel 構成の漏洩リスクを横断監査し `docs/security/` にレポート。RLS・GRANT・鍵露出・cron / preview 保護・外形からの anon 列挙。`--probe` で外形確認、`--compare` で複数リポジトリ横並び |
 
 ### agent（4）
 
 | agent | 役割 |
 |---|---|
 | `dcc:code-reviewer` | 品質・エラー処理・規約のレビュー |
-| `dcc:security-reviewer` | 入力・認証・シークレット・OWASP の観点 |
+| `dcc:security-reviewer` | 入力・認証・シークレット・OWASP の観点。Supabase / Vercel 構成では `supabase-vercel-audit` skill を併用 |
 | `dcc:spec-reviewer` | Codex 委譲前の設計書審査 |
 | `dcc:codex-auditor` | Codex 成果物の監査（境界逸脱・受け入れ条件・テスト再実行） |
 
 いずれも `model: inherit`（セッションのモデルを使う）。
 
-### skill（14）
+### skill（15）
 
-- ワークフロー: `codex-spec` / `codex-delegate` / `commit-helper` / `pr-helper` / `tdd-workflow` / `security-review`
+- ワークフロー: `codex-spec` / `codex-delegate` / `commit-helper` / `pr-helper` / `tdd-workflow` / `security-review` / `supabase-vercel-audit`（Supabase + Vercel の設定監査。`queries.sql` と read-only の `probe.sh` を同梱）
 - 規約: `coding-standards` / `backend-patterns` / `frontend-patterns` / `postgres-patterns`、Ruby（`ruby-patterns` / `ruby-testing`）、PHP（`php-patterns` / `php-testing`）
 
 ## Claude ⇔ Codex ハイブリッド運用

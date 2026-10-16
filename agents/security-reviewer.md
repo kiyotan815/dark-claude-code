@@ -29,6 +29,17 @@ npx trufflehog filesystem . --json     # Scan for hardcoded secrets
 git log -p | grep -i "password\|api_key\|secret"   # Secrets in git history
 ```
 
+## Stack-Specific Checks
+
+When the project uses Supabase and/or Vercel (look for `@supabase/supabase-js`,
+`supabase/config.toml`, `vercel.json`), load the **dcc:supabase-vercel-audit**
+skill. Most real-world breaches on that stack are misconfiguration, not code:
+RLS disabled, `using (true)` policies, column grants that allow self-privilege
+escalation, `service_role` keys reaching the client, public buckets, unprotected
+cron endpoints and preview deployments. That skill carries the SQL (`queries.sql`)
+and the read-only external probe (`probe.sh`); this agent covers the code side
+(IDOR, `getSession()` vs `getUser()`, webhook signatures, middleware coverage).
+
 ## Security Review Workflow
 
 ### 1. Initial Scan
