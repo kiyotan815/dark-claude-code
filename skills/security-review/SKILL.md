@@ -175,12 +175,12 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 -- Users can only view their own data
 CREATE POLICY "Users view own data"
   ON users FOR SELECT
-  USING (auth.uid() = id);
+  USING ((select auth.uid()) = id);  -- wrap in SELECT: evaluated once per query
 
 -- Users can only update their own data
 CREATE POLICY "Users update own data"
   ON users FOR UPDATE
-  USING (auth.uid() = id);
+  USING ((select auth.uid()) = id);  -- wrap in SELECT: evaluated once per query
 ```
 
 #### Verification Steps

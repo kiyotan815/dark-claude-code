@@ -11,6 +11,14 @@
 - [ ] Rate limiting on endpoints
 - [ ] Error messages don't leak sensitive data
 
+## Supabase / Vercel Projects
+
+Most breaches on this stack are misconfiguration, not code: RLS disabled,
+`using (true)` policies, `service_role` keys on the client, public buckets,
+unauthenticated cron endpoints, unprotected preview deployments. Run
+`/dcc:security-audit` (the `dcc:supabase-vercel-audit` skill) before launch,
+after schema changes that add tables or policies, and quarterly.
+
 ## Security Response Protocol
 
 If a security issue is found:

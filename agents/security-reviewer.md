@@ -1,7 +1,7 @@
 ---
 name: security-reviewer
 description: Security vulnerability detection and remediation specialist. Use PROACTIVELY after writing code that handles user input, authentication, API endpoints, or sensitive data. Flags secrets, SSRF, injection, unsafe crypto, and OWASP Top 10 vulnerabilities.
-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
+tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "Skill"]
 model: inherit
 ---
 
@@ -28,6 +28,18 @@ npx eslint . --plugin security         # Static analysis (eslint-plugin-security
 npx trufflehog filesystem . --json     # Scan for hardcoded secrets
 git log -p | grep -i "password\|api_key\|secret"   # Secrets in git history
 ```
+
+## Stack-Specific Checks
+
+When the project uses Supabase and/or Vercel (look for `@supabase/supabase-js`,
+`supabase/config.toml`, `vercel.json`), invoke the **dcc:supabase-vercel-audit**
+skill with the Skill tool. Most real-world breaches on that stack are misconfiguration, not code:
+RLS disabled, `using (true)` policies, column grants that allow self-privilege
+escalation, `service_role` keys reaching the client, public buckets, unprotected
+cron endpoints and preview deployments. That skill carries the SQL (`queries.sql`)
+and the read-only external probe (`probe.sh`); this agent covers the code side
+(IDOR, `getSession()` vs `getUser()`, webhook signatures, middleware coverage;
+see pattern 11 below).
 
 ## Security Review Workflow
 
@@ -197,6 +209,45 @@ console.log('User login:', { email, password, apiKey })
 
 // SECURE: sanitize logs
 console.log('User login:', { email: maskEmail(email), passwordProvided: !!password })
+```
+
+### 11. Supabase / Next.js Specific (CRITICAL–HIGH)
+
+```javascript
+// VULNERABLE: getSession() only reads the cookie; the JWT is not verified server-side
+const { data: { session } } = await supabase.auth.getSession()
+if (session) { /* trusted */ }
+
+// SECURE: getUser() validates the token with Supabase Auth
+const { data: { user } } = await supabase.auth.getUser()
+if (!user) return new Response('Unauthorized', { status: 401 })
+```
+
+```javascript
+// VULNERABLE: trusts userId from the request and bypasses RLS with service_role
+const { userId } = await req.json()
+const admin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY)
+const { data } = await admin.from('orders').select('*').eq('user_id', userId)
+
+// SECURE: identity comes from the verified session; the user-scoped client keeps RLS in force
+const { data: { user } } = await supabase.auth.getUser()
+const { data } = await supabase.from('orders').select('*').eq('user_id', user.id)
+```
+
+```typescript
+// VULNERABLE: middleware is the only auth check (CVE-2025-29927 bypass on old Next.js; matcher gaps)
+export const config = { matcher: ['/dashboard/:path*'] }
+
+// SECURE: every Route Handler, Server Action and protected page re-checks auth itself
+export async function POST() { const user = await requireUser(); /* ... */ }
+```
+
+```typescript
+// VULNERABLE: webhook body accepted without signature verification
+export async function POST(req: Request) { const event = await req.json(); await handle(event) }
+
+// SECURE: verify the provider signature on the raw body first
+const event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!)
 ```
 
 ## Security Review Report Format
