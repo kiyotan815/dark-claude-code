@@ -9,7 +9,9 @@
 #   dcc shell         # devcontainer up + bash で入る
 #   dcc up            # コンテナ起動のみ
 #   dcc rebuild       # コンテナ作り直し + claude 起動
-#   dcc init          # カレントプロジェクトへ .devcontainer + AGENTS.md/CLAUDE.md を展開
+#   dcc init [-y]     # カレントプロジェクトへ .devcontainer + AGENTS.md/CLAUDE.md を展開。
+#                     # 旧 init 済みのプロジェクトで再実行すると移行する（.claude/ のキット由来コピーを
+#                     # 確認の上で削除、postCreate.sh を新版へ）。-y で確認を省略
 #   dcc link-host     # host の ~/.claude / ~/.codex をキット参照にし、plugin を登録・install（コンテナ不要運用）
 #   dcc sync          # marketplace / plugin を更新（GitHub 経由で install した環境向け）
 #   dcc kit [args]    # キット repo で claude を起動 (改善・PR 作成用)
@@ -72,11 +74,171 @@ setup_agents_md() {
   fi
 }
 
-cmd_init() {
+# キット repo の履歴が完全か。shallow clone や非 git だと旧 blob が無く、由来判定を誤る
+kit_history_complete() {
+  command -v git >/dev/null 2>&1 || return 1
+  [ "$(git -C "$KIT_ROOT" rev-parse --is-shallow-repository 2>/dev/null)" = false ]
+}
+
+# ファイルの内容がキット repo の履歴に存在する blob と一致すれば真（= キット由来で未改変）
+is_kit_blob() {
+  local h
+  [ -s "$1" ] || return 1   # 空ファイルは由来を判定できない
+  h="$(git hash-object --no-filters "$1" 2>/dev/null)" || return 1
+  git -C "$KIT_ROOT" cat-file -e "${h}^{blob}" 2>/dev/null
+}
+
+# パスの途中または末尾に symlink があれば真。.claude/ や .claude/commands が dotfiles 等への
+# symlink だと削除先がプロジェクト外になるため、そのようなパスは掃除対象から外す
+has_symlink_component() {
+  local x="$1"
+  while [ -n "$x" ] && [ "$x" != "." ] && [ "$x" != "/" ]; do
+    [ -L "$x" ] && return 0
+    x="$(dirname "$x")"
+  done
+  return 1
+}
+
+# .devcontainer/ の配置と更新。postCreate.sh はキット所有なので新版へ差し替えるが、
+# プロジェクト側で改変されている（キットのどの版とも一致しない）場合は上書きせず警告する。
+# devcontainer.json は image 差し替え等の余地があるので触らない
+setup_devcontainer() {
   if [ ! -d .devcontainer ]; then
     cp -R "$KIT_ROOT/.devcontainer" .devcontainer
     log ".devcontainer/ を配置しました"
+    return 0
   fi
+  local src="$KIT_ROOT/.devcontainer/postCreate.sh" dst=".devcontainer/postCreate.sh"
+  if [ -f "$dst" ] && cmp -s "$src" "$dst"; then
+    log "ok:   $dst (最新)"
+  elif [ -f "$dst" ] && ! kit_history_complete; then
+    log "warn: $dst が改変済みか判定できない（キット repo の履歴が不完全）ため上書きしません。手動更新: cp $src $dst"
+  elif [ -f "$dst" ] && ! is_kit_blob "$dst"; then
+    log "warn: $dst はプロジェクト側で改変されているため上書きしません。plugin install を含む新版: $src"
+  else
+    cp "$src" "$dst" || die "$dst を更新できません"
+    chmod +x "$dst"
+    log "update: $dst (キットの新版へ差し替え。devcontainer.json は変更しない)"
+  fi
+}
+
+# キット repo が過去に配布したことのあるパス（旧 dcc sync の対象ディレクトリ）
+kit_history_paths() {
+  git -C "$KIT_ROOT" log --format= --name-only --all \
+    -- commands agents skills hooks mcp-configs scripts/hooks 2>/dev/null | sort -u
+}
+
+# .claude/settings*.json から参照されているパスか（opt-in hook 等は残す）
+referenced_in_settings() {
+  local f
+  for f in .claude/settings.json .claude/settings.local.json; do
+    [ -f "$f" ] && grep -qF -- "$1" "$f" && return 0
+  done
+  return 1
+}
+
+# 旧 dcc sync が .claude/ にコピーしたキット由来ファイルを削除する（plugin と二重になるため）。
+# 残すもの: プロジェクト独自のファイル（キット履歴に無いパス）、settings から参照されているもの、
+# プロジェクト側で改変されているもの（警告のみ）。削除前に一覧を出して確認する
+cleanup_legacy_copies() {
+  [ -d .claude ] || return 0
+  if ! kit_history_complete; then
+    log "warn: キット repo の git 履歴が不完全（shallow clone か git 不在）なため .claude/ の掃除をスキップ。解消: git -C $KIT_ROOT fetch --unshallow"
+    return 0
+  fi
+  local hist
+  hist="$(kit_history_paths || true)"
+  if [ -z "$hist" ]; then
+    log "warn: キット repo の git 履歴を読めないため .claude/ の掃除をスキップ"
+    return 0
+  fi
+  local targets modified p name f changed
+  targets=(); modified=()
+  # skill ディレクトリ配下以外（commands/ agents/ hooks/ mcp-configs/ scripts/hooks/ と skills/ 直下）はファイル単位
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    case "$p" in skills/*/*) continue ;; esac
+    [ -f ".claude/$p" ] || continue
+    if has_symlink_component ".claude/$p"; then
+      log "skip: .claude/$p (symlink 経由。実体がプロジェクト外の可能性)"
+    elif referenced_in_settings "$p"; then
+      log "keep: .claude/$p (settings.json から参照)"
+    elif is_kit_blob ".claude/$p"; then
+      targets+=(".claude/$p")
+    else
+      modified+=(".claude/$p")
+    fi
+  done <<<"$hist"
+  # skills/<name>/ はディレクトリ単位。1 ファイルでも改変があれば残す。中に symlink があれば内容を保証できないので残す
+  while IFS= read -r name; do
+    [ -n "$name" ] && [ -d ".claude/skills/$name" ] || continue
+    if has_symlink_component ".claude/skills/$name"; then
+      log "skip: .claude/skills/$name (symlink 経由。実体がプロジェクト外の可能性)"
+      continue
+    fi
+    if referenced_in_settings "skills/$name"; then
+      log "keep: .claude/skills/$name (settings.json から参照)"
+      continue
+    fi
+    changed=0
+    if [ -n "$(find ".claude/skills/$name" -type l)" ]; then
+      changed=1
+    else
+      while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        is_kit_blob "$f" || { changed=1; break; }
+      done <<<"$(find ".claude/skills/$name" -type f)"
+    fi
+    if [ "$changed" = 0 ]; then
+      targets+=(".claude/skills/$name")
+    else
+      modified+=(".claude/skills/$name/")
+    fi
+  done <<<"$(printf '%s\n' "$hist" | awk -F/ '$1=="skills" && NF>=3 {print $2}' | sort -u)"
+
+  if [ ${#modified[@]} -gt 0 ]; then
+    log "warn: キットの配布名と同名だが内容がキットのどの版とも一致しないため残します（改変済み、またはプロジェクト独自。plugin と重複していれば手で整理）:"
+    printf '        %s\n' ${modified[@]+"${modified[@]}"}
+  fi
+  if [ ${#targets[@]} -eq 0 ]; then
+    log "ok:   .claude/ にキット由来のコピーは無し"
+    return 0
+  fi
+  log "旧 dcc sync のコピー ${#targets[@]} 件を削除します（plugin $PLUGIN と二重になるため）:"
+  printf '        %s\n' ${targets[@]+"${targets[@]}"}
+  if [ "$ASSUME_YES" != 1 ]; then
+    local ans=""
+    # 端末が無い（CI / パイプ実行）ときは削除しない
+    if (: </dev/tty) 2>/dev/null; then
+      read -r -p "削除しますか? [y/N] " ans </dev/tty || ans=""   # EOF (Ctrl-D / -i 無し) は No 扱い
+    fi
+    if [[ ! "$ans" =~ ^[Yy]$ ]]; then
+      log "skip: 削除を見送りました（確認なしで実行するなら dcc init -y）"
+      return 0
+    fi
+  fi
+  rm -rf -- ${targets[@]+"${targets[@]}"}
+  # 旧 sync 先ディレクトリの空サブディレクトリ（hooks/memory-persistence/ 等）と空になった親を畳む。
+  # skills/ は Claude Code 管理の learned/ 等があるので親が空のときだけ消す
+  local d
+  for d in commands agents hooks mcp-configs scripts/hooks scripts; do
+    [ -d ".claude/$d" ] && find ".claude/$d" -depth -type d -empty -delete 2>/dev/null || true
+  done
+  [ -d .claude/skills ] && rmdir .claude/skills 2>/dev/null || true
+  log "rm:   ${#targets[@]} 件を削除しました（git 管理下なら git checkout で復元可）"
+}
+
+ASSUME_YES=0
+cmd_init() {
+  local a
+  for a in "$@"; do
+    case "$a" in
+      -y|--yes) ASSUME_YES=1 ;;
+      *) die "init の不明な引数: $a（使えるのは -y）" ;;
+    esac
+  done
+  setup_devcontainer
+  cleanup_legacy_copies
   setup_agents_md
   log "展開完了。skill / agent / command は plugin ($PLUGIN) が供給します（host: dcc link-host、コンテナ: postCreate が install）"
 }
@@ -174,7 +336,7 @@ cmd_kit() {
 }
 
 case "${1:-}" in
-  init)      cmd_init ;;
+  init)      shift; cmd_init "$@" ;;
   sync)      cmd_sync ;;
   link-host) cmd_link_host ;;
   kit)       shift; cmd_kit "$@" ;;

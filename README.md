@@ -23,7 +23,12 @@ dcc link-host
 
 plugin は user scope に入るので、**各プロジェクトに置くものは無い**。`cd <project> && claude` で `/dcc:*` と agent / skill が使える。プロジェクト固有の指示は `AGENTS.md` に書く（`CLAUDE.md` は symlink。`dcc init` が作る）。
 
-既存プロジェクトの `.claude/` との関係は「上書きではなく共存」。plugin は `dcc:` 名前空間なので、プロジェクト独自の command / agent / rules / hook はそのまま並んで動く。ただし旧 `dcc sync` がコピーしたキット由来のファイルが `.claude/commands` 等に残っていると `/code-review` と `/dcc:code-review` が二重に出るので削除する。
+既存プロジェクトの `.claude/` との関係は「上書きではなく共存」。plugin は `dcc:` 名前空間なので、プロジェクト独自の command / agent / rules / hook はそのまま並んで動く。ただし旧 `dcc sync` がコピーしたキット由来のファイルが `.claude/commands` 等に残っていると `/code-review` と `/dcc:code-review` が二重に出る。**旧 `dcc init` で作ったプロジェクトでは `dcc init` をもう一度実行する**と移行できる:
+
+- `.claude/` のうちキットが過去に配布したファイル（キット repo の git 履歴で判定）を一覧表示し、確認後に削除する。プロジェクト独自のファイル、`settings.json` から参照されている hook、プロジェクト側で改変されたファイルは残す（改変分は警告のみ。plugin と二重なので不要なら手で消す）
+- `.devcontainer/postCreate.sh` をキットの新版（plugin install 入り）に差し替える。改変されていれば上書きせず警告。`devcontainer.json` は触らない
+- `.claude/` 配下が symlink（dotfiles 共有など）のパスは削除先がプロジェクト外になるので対象外。キット repo が shallow clone だと由来を判定できないので掃除をスキップする（`git fetch --unshallow` で解消）
+- 何度実行しても安全。確認を省略するなら `dcc init -y`
 
 ### devcontainer
 
@@ -68,7 +73,7 @@ claude plugin install dcc@dark-claude-code
 | `dcc shell` | devcontainer up + bash で入る |
 | `dcc up` | コンテナ起動のみ |
 | `dcc rebuild` | コンテナ作り直し + claude 起動 |
-| `dcc init` | `.devcontainer/` + `AGENTS.md` / `CLAUDE.md`（symlink）をカレントプロジェクトへ展開 |
+| `dcc init [-y]` | `.devcontainer/` + `AGENTS.md` / `CLAUDE.md`（symlink）をカレントプロジェクトへ展開。旧 init 済みなら移行（`.claude/` のキット由来コピーを確認の上で削除、`postCreate.sh` 更新）。`-y` で確認省略 |
 | `dcc link-host` | host のグローバル設定をキット参照にし、plugin を登録・install |
 | `dcc sync` | marketplace と plugin を更新（GitHub 経由で install した環境向け） |
 | `dcc kit` | キット repo で claude を起動（改善・PR 作成用） |
