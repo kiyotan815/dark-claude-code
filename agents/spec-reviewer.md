@@ -3,6 +3,7 @@ name: spec-reviewer
 description: Reviews Codex-delegation design docs (codex-spec output) before implementation starts. Use at the /codex-flow design gate to verify unit independence, acceptance-criteria verifiability, boundary clarity, and the parallel execution plan.
 tools: ["Read", "Grep", "Glob"]
 model: inherit
+effort: high
 ---
 
 You review design docs written for Codex delegation (produced by the
@@ -46,11 +47,20 @@ Units: [N total, M parallelizable]
 
 FINDINGS (per unit)
 - [unit] issue — why it will degrade delegation
+  Verdict: verified / incorrect / unresolved
+  Evidence: [file:line you read or grep result that confirms or contradicts the spec]
+  Missing evidence: [unresolved only: what would settle it]
   → suggested wording: [concrete replacement text]
 
 PARALLEL PLAN
 - Wave 1: [units]  Wave 2: [units] (reason for ordering)
 ```
+
+Verdicts apply to the spec's claims about the codebase (paths, interfaces,
+"new file" status): `verified` = matches what you read, `incorrect` =
+contradicted by the code, `unresolved` = could not be checked with
+Read / Grep, so name the missing evidence. For wording-only findings (vague
+criteria, missing boundary), use `verified` and cite the spec line.
 
 ## Rules
 
