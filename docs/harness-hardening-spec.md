@@ -112,7 +112,7 @@
   - `grep -c 'progress.md' commands/codex-impl.md` が 1 以上、`grep -c 'progress' commands/codex-flow.md` が 2 以上
   - `grep -c 'ユーザーの確認' commands/codex-impl.md` が 1 以上
   - `grep -c 'gh pr list --head' commands/vuln-fix.md` が 1
-  - `grep -c '再実行' commands/code-review.md` が 1 以上、`grep -c 'Missing evidence' commands/code-review.md` が 1
+  - `grep -c 're-run' commands/code-review.md` が 1 以上、`grep -c 'Missing evidence' commands/code-review.md` が 1 以上
   - `node scripts/ci/validate-commands.js` と `npm test` が 0 終了
 - **依存**: なし（契約 2・3 の文言に従う）
 

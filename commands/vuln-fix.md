@@ -154,6 +154,8 @@ VULNERABILITY REPORT — open: N件 (critical X / high Y / moderate Z / low W)
 
 **pr-helper skill** に従って作成する（複数行 body の扱い）。
 
+push / `gh pr create` がタイムアウト・失敗したら、そのまま再実行しない。`git remote -v` と `gh pr list --head <branch>` で宛先と既存 PR を確認してから再試行する（二重 PR と別 remote への push を防ぐ）。
+
 PR body に必ず含める:
 
 ```markdown
