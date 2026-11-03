@@ -159,13 +159,15 @@
   - `package.json` の `validate` の末尾に `&& bash scripts/ci/test-check-sensitive-paths.sh` を追加
 - **触らない**: `README.md` の hook 登録例（登録方法は変わらない）、`rules/hooks.md`（U5）
 - **テスト**: `bash scripts/ci/test-check-sensitive-paths.sh`、`bash -n hooks/check-sensitive-paths.sh`、`npm test`
-- **手順（TDD 順）**: (1) テストスクリプトを先に書き、現状の hook に対して実行して 4 ケースが失敗することを確認（RED） (2) hook を書き換えて全ケース成功（GREEN） (3) `package.json` に組み込む
-- **受け入れ条件**（テストスクリプトの 5 ケース）:
+- **手順（TDD 順）**: (1) テストスクリプトを先に書き、現状の hook に対して実行して deny の 4 ケースが失敗することを確認（RED） (2) hook を書き換えて全ケース成功（GREEN） (3) `package.json` に組み込む
+- **受け入れ条件**（テストスクリプトの 7 ケース）:
   - `{"tool_name":"Read","tool_input":{"file_path":"../etc/passwd"}}` → `jq -er '.hookSpecificOutput.permissionDecision == "deny"'` が成功
   - `{"tool_name":"Bash","tool_input":{"command":"git push upstream main"}}` → 同上
   - `{"tool_name":"Read","tool_input":{"file_path":"/tmp/x\"y"}}` → 出力が `jq -e .` で妥当な JSON かつ deny
   - `{"tool_name":"Bash","tool_input":{"command":"ls"}}` → 出力が空で exit 0
   - `{"tool_name":"Bash","tool_input":{"command":"git log main..HEAD"}}` → 出力が空で exit 0（範囲演算子は親ディレクトリ扱いしない）
+  - `{"tool_name":"Bash","tool_input":{"command":"cat ~/.ssh/id_rsa"}}` → deny
+  - プロジェクト内の絶対パス（`$CLAUDE_PROJECT_DIR/README.md`）の Read → 出力が空で exit 0
   - `grep -c '"decision"' hooks/check-sensitive-paths.sh` が 0
   - `bash -n hooks/check-sensitive-paths.sh` と `npm test` が 0 終了
 - **依存**: なし
