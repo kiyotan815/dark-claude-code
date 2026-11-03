@@ -1,6 +1,15 @@
 #!/bin/bash
 # PreToolUse hook: Block access to directories outside the working directory
 
+# Emit a PreToolUse deny decision and stop. jq escapes the reason, so paths with
+# quotes or backslashes still produce valid JSON.
+deny() {
+  jq -nc --arg reason "$1" \
+    '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}' \
+    || { echo "$1" >&2; exit 2; }  # still block without jq: exit 2 denies with stderr as the reason
+  exit 0
+}
+
 # Read tool information from stdin in JSON format
 input=$(cat)
 
@@ -27,14 +36,12 @@ if [ "$tool_name" != "Bash" ] && [ -n "$target" ]; then
 
     # Block if resolution fails
     if [ $? -ne 0 ] || [ -z "$resolved_path" ]; then
-      echo "{\"decision\": \"block\", \"reason\": \"Failed to resolve symlink: $target\"}"
-      exit 0
+      deny "Failed to resolve symlink: $target"
     fi
 
     # Block if resolved path is outside working directory
     if [[ "$resolved_path" != "$WORK_DIR" && "$resolved_path" != "$WORK_DIR"/* ]] && [[ "$resolved_path" != "/tmp/claude"* ]]; then
-      echo "{\"decision\": \"block\", \"reason\": \"Symlink points outside working directory: $target -> $resolved_path\"}"
-      exit 0
+      deny "Symlink points outside working directory: $target -> $resolved_path"
     fi
   fi
 fi
@@ -43,8 +50,7 @@ fi
 if [ "$tool_name" = "Bash" ]; then
   # Block git remote add (prevent adding attacker's remote repository)
   if [[ "$target" == *"git remote add"* ]]; then
-    echo "{\"decision\": \"block\", \"reason\": \"git remote add is prohibited (security risk)\"}"
-    exit 0
+    deny "git remote add is prohibited (security risk)"
   fi
 
   # Block git push to remotes other than origin
@@ -60,8 +66,7 @@ if [ "$tool_name" = "Bash" ]; then
         # Remote name extracted (BASH_REMATCH[3])
         remote="${BASH_REMATCH[3]}"
         if [[ "$remote" != "origin" ]]; then
-          echo "{\"decision\": \"block\", \"reason\": \"git push to remotes other than origin is prohibited\"}"
-          exit 0
+          deny "git push to remotes other than origin is prohibited"
         fi
       fi
     fi
@@ -71,8 +76,7 @@ if [ "$tool_name" = "Bash" ]; then
   if [[ "$target" == *"git clone"* ]]; then
     # Block if contains protocols like http://, https://, git@, ssh://
     if [[ "$target" =~ git[[:space:]]+clone[[:space:]]+(https?://|git@|ssh://) ]]; then
-      echo "{\"decision\": \"block\", \"reason\": \"git clone from external repositories is prohibited\"}"
-      exit 0
+      deny "git clone from external repositories is prohibited"
     fi
   fi
 
@@ -85,29 +89,25 @@ if [ "$tool_name" = "Bash" ]; then
   else
     # For non-git commands, check parent directory access
     if [[ "$target" == *"../"* ]] || [[ "$target" == *".."* ]]; then
-      echo "{\"decision\": \"block\", \"reason\": \"Access to parent directory is prohibited\"}"
-      exit 0
+      deny "Access to parent directory is prohibited"
     fi
   fi
 else
   # For non-Bash tools (Read/Edit/Write), perform normal parent directory check
   if [[ "$target" == *"../"* ]] || [[ "$target" == *".."* ]]; then
-    echo "{\"decision\": \"block\", \"reason\": \"Access to parent directory is prohibited\"}"
-    exit 0
+    deny "Access to parent directory is prohibited"
   fi
 fi
 
 # Prohibited pattern checks
 # 1. Access to home directory (~)
 if [[ "$target" == ~* ]] || [[ "$target" == *"~/"* ]]; then
-  echo "{\"decision\": \"block\", \"reason\": \"Access to home directory is prohibited\"}"
-  exit 0
+  deny "Access to home directory is prohibited"
 fi
 
 # 2. For absolute paths, block access outside working directory
 if [[ "$target" == /* ]] && [[ "$target" != "$WORK_DIR" && "$target" != "$WORK_DIR"/* ]] && [[ "$target" != "/tmp/claude"* ]] && [[ "$target" != "/dev/"* ]]; then
-  echo "{\"decision\": \"block\", \"reason\": \"Access outside working directory is prohibited: $target\"}"
-  exit 0
+  deny "Access outside working directory is prohibited: $target"
 fi
 
 # Allow
