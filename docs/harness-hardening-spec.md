@@ -64,13 +64,13 @@
 
 - **成果物**: `claude-global/settings.json` に `permissions.deny`（契約 5 の 8 件）が入り、`hooks` キーが消えた状態
 - **対象ファイル**: `claude-global/settings.json` のみ
-- **触らない**: `permissions.allow` の 73 件、`defaultMode`、`model` 以下の他キー、live の `~/.claude/settings.json`（ユーザー作業）、`.devcontainer/postCreate.sh`
+- **触らない**: `permissions.allow` の 72 件、`defaultMode`、`model` 以下の他キー、live の `~/.claude/settings.json`（ユーザー作業）、`.devcontainer/postCreate.sh`
 - **テスト**: 下記 jq と `npm test`
 - **受け入れ条件**:
   - `jq -e '.permissions.deny | length == 8' claude-global/settings.json` が成功
   - `jq -e '.permissions.deny | index("Read(./.env)") != null and index("Read(~/.codex/auth.json)") != null' claude-global/settings.json` が成功
   - `jq -e 'has("hooks") | not' claude-global/settings.json` が成功
-  - `jq -e '.permissions.allow | length == 73' claude-global/settings.json` が成功（allow 不変）
+  - `jq -e '.permissions.allow | length == 72' claude-global/settings.json` が成功（allow 不変）
   - `npm test` が 0 終了
 - **依存**: なし
 
