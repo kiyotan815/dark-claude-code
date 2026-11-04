@@ -1,26 +1,39 @@
 #!/bin/bash
 # PreToolUse hook: Block access to directories outside the working directory
 
+# Block via exit 2 (Claude Code denies the call and shows stderr as the reason).
+# Used when the checks below cannot run, so the hook fails closed instead of
+# allowing everything with empty fields.
+fail_closed() {
+  echo "check-sensitive-paths: $1; blocking" >&2
+  exit 2
+}
+
 # Emit a PreToolUse deny decision and stop. jq escapes the reason, so paths with
 # quotes or backslashes still produce valid JSON.
 deny() {
   jq -nc --arg reason "$1" \
     '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}' \
-    || { echo "$1" >&2; exit 2; }  # still block without jq: exit 2 denies with stderr as the reason
+    || fail_closed "could not build the deny decision ($1)"
   exit 0
 }
 
 # Read tool information from stdin in JSON format
 input=$(cat)
 
+command -v jq >/dev/null 2>&1 || fail_closed "jq not found"
+
 # Get tool name
-tool_name=$(echo "$input" | jq -r '.tool_name // ""')
+tool_name=$(printf '%s' "$input" | jq -r '.tool_name // ""') \
+  || fail_closed "invalid hook input"
 
 # Extract path (command for Bash, file_path for Read/Edit/Write)
 if [ "$tool_name" = "Bash" ]; then
-  target=$(echo "$input" | jq -r '.tool_input.command // ""')
+  target=$(printf '%s' "$input" | jq -r '.tool_input.command // ""') \
+    || fail_closed "invalid hook input"
 else
-  target=$(echo "$input" | jq -r '.tool_input.file_path // ""')
+  target=$(printf '%s' "$input" | jq -r '.tool_input.file_path // ""') \
+    || fail_closed "invalid hook input"
 fi
 
 # Project root: Claude Code exports CLAUDE_PROJECT_DIR to hook processes
