@@ -71,13 +71,13 @@ sleep 3   # 同時初期化の資源競合を避けるため 2〜3 秒ずらし�
 codex exec -s workspace-write -C ../<proj>-u2 -o "$S/u2-last.md" "$(cat "$S/u2-prompt.md")" < /dev/null > "$S/u2.log" 2>&1 &
 ```
 
-**統合は監査 OK のユニットから 1 本ずつ**:
+**統合はユーザーの確認を得てから、監査 OK のユニットから 1 本ずつ**（codex-flow 手順 7 / codex-impl の注意）:
 
-1. Claude が worktree 内で commit する
+1. Claude が worktree 内で commit する（監査 APPROVE 後に済ませていればそのまま）
 2. `git merge --no-ff codex/uN`
 3. `git worktree remove ../<proj>-uN` と `git branch -d codex/uN`
 
-全ユニットのマージ後、依存追加があれば install、コード生成（`prisma generate` 等）を再実行し、統合ブランチでフルテスト・tsc・lint を回す。
+全ユニットのマージ後、依存追加があれば install、コード生成（`prisma generate` 等）を再実行し、統合ブランチでフルテスト・tsc・lint を回す。落ちたら直し、その修正の commit も結果を示して確認を得てから行う。
 
 ## 進捗ファイル（セッションをまたぐ引き継ぎ）
 
@@ -110,14 +110,16 @@ U3 を auditor の再委譲プロンプトで再委譲する
 
 更新するタイミング:
 
-1. 設計書ゲート通過後（Task と Next action）
+1. 設計書ゲート通過後（codex-flow）、または委譲計画の提示後（codex-impl 単独）。Task と Next action を書く
 2. 各ユニットの委譲開始時（Outputs に worktree・branch・log・`-last.md` のパス）
-3. 各監査 verdict の後（Completed / Open issues / Next action）
+3. 各監査結果（APPROVE / FIX REQUIRED）の後（Completed / Open issues / Next action）
 4. 各 merge の後（Completed に merge commit）
 5. commit 前（Open issues を確定し、報告の材料にする）
 
 - 再開時は Outputs の scratchpad パスが消えている前提で、worktree と branch の実状態（`git worktree list`、`git log codex/uN`）を正とする
-- progress ファイルは作業ツリーにだけ置き、commit しない。最終 commit の時点で削除するか、要点を設計書の変更履歴に畳む
+- 作成時に `*.progress.md` を `"$(git rev-parse --git-common-dir)/info/exclude"` へ追記し（既にあれば足さない）、`git add -A` で巻き込まないようにする
+- 鍵・トークン・`.env` の値を書かない。セキュリティ所見は file:line と重大度だけにする
+- progress ファイルは作業ツリーにだけ置き、commit しない。最終 commit の前に Review time / Fixes を設計書の変更履歴へ移し（前後比較の記録を残すため）、その後に削除する
 
 ## 監査ループ（Claude の仕事、省略禁止）
 
@@ -129,7 +131,7 @@ U3 を auditor の再委譲プロンプトで再委譲する
    - `codex exec resume --last` は限定的に使う。**worktree 委譲では使用禁止** — resume は元セッションの `-C <dir>` を引き継がず**シェルの cwd で実行される**ため、メインの作業ツリーに別実装を書き込んで汚染する（codex-cli 0.144.2 で確認）。また並列委譲中は `--last` がどのセッションを指すか不定
    - 汚染してしまった場合の復旧: `git checkout -- <誤変更ファイル>` + 未追跡の誤生成物を削除（正は worktree 側にある前提で消してよいか diff 確認してから）
 4. 2〜3 回の再委譲で収束しなければ、Claude が直接引き取って修正する
-5. OK になったら commit（コミットは Claude が行う。Codex にはさせない）
+5. OK になったら Claude が commit する（Codex にはさせない）。worktree 委譲ではユニット branch（`codex/uN`）上の commit は監査 APPROVE 後に行ってよい。作業ブランチへの merge と、worktree を使わない委譲の commit はユーザーの確認を得てから行う
 
 委譲中にユーザーの要件変更が入ったら、**先に設計書を更新**（日付付きのユーザー発言・変更理由・影響）し、再委譲プロンプトでは「設計書の◯◯節の更新済み記述に従う」と節を指定する。
 

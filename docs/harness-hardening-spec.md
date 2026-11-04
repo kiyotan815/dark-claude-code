@@ -30,7 +30,7 @@
 
 ## 契約（ユニット間の境界面）
 
-1. **verdict 語彙**: finding ごとの `Verdict:` は `verified` / `incorrect` / `unresolved` の 3 値。codex-auditor の受け入れ条件判定は既存の `PASS` / `FAIL` / `UNVERIFIABLE` を維持し、`UNVERIFIABLE` には `Missing evidence:` を必須にする（`unresolved` 相当）
+1. **verdict 語彙**: finding ごとの `Verdict:` は `verified` / `incorrect` / `unresolved` の 3 値。`verified` = 証拠で確認した欠陥、`incorrect` = 対象の主張（コード・テスト・PR 説明・設計書の記述）が証拠で否定された欠陥で、所見の撤回ではない、`unresolved` = 未確認で `Missing evidence:` が必須。commit を止めるのは CRITICAL / HIGH の `verified` と `incorrect`。codex-auditor の受け入れ条件判定は既存の `PASS` / `FAIL` / `UNVERIFIABLE` を維持し、`UNVERIFIABLE` には `Missing evidence:` を必須にする（`unresolved` 相当）
 2. **finding の 3 欄**（U2 の 4 agent と U3 の code-review 手順が同じ文言を使う）:
 
    ```text
@@ -213,7 +213,9 @@
 - 項目 7（中）: codex-flow 用の `/goal` 条件テンプレ（「全ユニットが codex-auditor で APPROVE、統合ブランチでテストが 0 終了、progress の Open issues が明示。or stop after 12 turns」）
 - 項目 9（中）: `claude-global/statusline.sh` のコスト単価の更新
 - 項目 3（低）: supabase-vercel-audit の Layer A 冒頭に MCP 疎通確認 1 行
+- hook の既存の抜け道（2026-11-04 のレビューで判明。判定ロジックの変更になるので対象外）: コマンドのどこかに `git` と空白が続くと `..` の判定を飛ばす、空白付きの `origin` が部分一致すれば origin 以外へ push できる、`/tmp/claude` の前方一致で `/tmp/claude-evil/` も許可する、`$HOME/...` やコマンド途中の絶対パスを見ない、Grep / Glob の `path` を見ない
 
 ## 変更履歴
 
 - 2026-11-04: 初版。差分レポートの「高」3 項目（実行層・レビューゲート・引き継ぎ）と不整合 2 点（pr-helper の push 承認、codex-impl の commit 確認）
+- 2026-11-04: code-reviewer（Block、HIGH 2 件）と security-reviewer（APPROVE WITH CHANGES）の指摘を反映。hook を jq 不在・壊れた入力で fail closed に、.env の deny を `**/` で任意の深さに、`incorrect` の CRITICAL / HIGH も commit を止める、commit 確認の範囲を作業ブランチへの merge・commit に限定、codex-impl 単独でも progress を作る、progress を `.git/info/exclude` に入れる、など
