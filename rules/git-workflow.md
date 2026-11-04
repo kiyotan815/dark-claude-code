@@ -24,4 +24,5 @@ all pass.
 ## Feature Implementation Flow
 
 Plan Mode (phases) → tests first (`dcc:tdd-workflow` skill) →
-**dcc:code-reviewer** (fix CRITICAL/HIGH) → commit with conventional format
+**dcc:code-reviewer** (fix CRITICAL/HIGH, then re-review the fixed files) →
+commit with conventional format

@@ -12,6 +12,11 @@ Prefer the built-in Bash sandbox and `permissions.allow` / `deny` rules over
 custom hooks for access control. Add a hook only for a deterministic,
 project-specific check (lint on save, schema regeneration).
 
+`Read` / `Edit` deny rules cover the file tools, `cat` / `head` / `tail` /
+`sed` / `tee`, and redirections in Bash. They do not cover node / python
+scripts that open files themselves; the Bash sandbox is the enforcement for
+that.
+
 ## Auto-Accept Permissions
 
 - Enable acceptEdits only for trusted, well-defined plans
