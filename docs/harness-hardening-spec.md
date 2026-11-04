@@ -41,13 +41,13 @@
 
 3. **progress ファイル**: 設計書と同じディレクトリに `<設計書ファイル名から .md を除いたもの>.progress.md`（例 `docs/feature-x.md` → `docs/feature-x.progress.md`）。見出しは固定 6 つ `## Task` `## Outputs` `## Completed` `## Decisions` `## Open issues` `## Next action`、任意で `## Review time / Fixes`。U3（codex-impl / codex-flow）、U4（codex-delegate）、U7（README）がこの名前と見出しを使う。scratchpad には置かない（セッション終了で消える）
 4. **effort**: 4 agent とも `effort: high`（agent frontmatter の正式フィールド。値は low / medium / high / xhigh / max）。`scripts/ci/validate-agents.js` の必須項目に `effort` を加える
-5. **deny ルール**: 次の 8 件で固定。`.gitignore` の secrets 対象と同じ範囲で、`.env.example` は残る。Read の deny は同パスの Edit / Write と、Bash の `cat` `head` `tail` `sed` `tee` とリダイレクトにも効く。node / python スクリプト経由のアクセスには効かないので、そこは Bash sandbox が担う
+5. **deny ルール**: 次の 8 件で固定。範囲は `.gitignore` の secrets 対象と同じで、`.env` 系は任意の深さに当てるため `**/` を付ける（`./.env` は作業ディレクトリ直下にしか当たらない）。`.env.example` と、`.gitignore` と同じく `.env.production` などは対象外。[permissions docs](https://code.claude.com/docs/en/permissions) によると Read の deny は同じパスの Read / Edit / Write ツールと、Bash の `cat` `head` `tail` `sed` と入力リダイレクトに効く。`grep -r` のようにファイル名を書かないコマンドや、node / python スクリプトが自前で開くファイルには効かないので、そこは Bash sandbox が担う。雛形は sandbox を有効にしない（利用者が `/sandbox` で有効にする）。作業ディレクトリの外（worktree 並列の `../<proj>-uN/.env`）は `**/` でも当たらない
 
    ```json
    "deny": [
-     "Read(./.env)",
-     "Read(./.env.local)",
-     "Read(./.env.*.local)",
+     "Read(**/.env)",
+     "Read(**/.env.local)",
+     "Read(**/.env.*.local)",
      "Read(**/*.pem)",
      "Read(**/*.key)",
      "Read(**/secrets.json)",
@@ -68,7 +68,7 @@
 - **テスト**: 下記 jq と `npm test`
 - **受け入れ条件**:
   - `jq -e '.permissions.deny | length == 8' claude-global/settings.json` が成功
-  - `jq -e '.permissions.deny | index("Read(./.env)") != null and index("Read(~/.codex/auth.json)") != null' claude-global/settings.json` が成功
+  - `jq -e '.permissions.deny | index("Read(**/.env)") != null and index("Read(~/.codex/auth.json)") != null' claude-global/settings.json` が成功
   - `jq -e 'has("hooks") | not' claude-global/settings.json` が成功
   - `jq -e '.permissions.allow | length == 72' claude-global/settings.json` が成功（allow 不変）
   - `npm test` が 0 終了
@@ -200,10 +200,11 @@
 ## 統合後の確認（手動・1 回）
 
 1. `claude doctor` で deny ルールの警告（matches no tool 等）が無い
-2. `/permissions` に deny 8 件が表示され、`.env` の Read が拒否される（`.env.example` は読める）
-3. `/agents` で 4 agent の effort が high
-4. 新セッションでダミーの `docs/dummy.progress.md`（Next action に「U2 の監査を実行」）を作り、`/dcc:codex-impl docs/dummy.progress.md` を実行して Next action から続行する旨の応答が出る。確認後にダミーは削除
-5. 結果を README の「## メンテナンス」に 1 行で記録する
+2. `/permissions` に deny 8 件が表示され、`.env` と `sub/.env` の Read と `cat .env` が拒否され、`.env.example` は読める
+3. codex-delegate の worktree 準備（`cp .env "$w/"`）が deny で止まるかを確かめ、止まるなら skill に「.env は利用者がコピーする」と書く
+4. `/agents` で 4 agent の effort が high
+5. 新セッションでダミーの `docs/dummy.progress.md`（Next action に「U2 の監査を実行」）を作り、`/dcc:codex-impl docs/dummy.progress.md` を実行して Next action から続行する旨の応答が出る。確認後にダミーは削除
+6. 結果を README の「## メンテナンス」に 1 行で記録する
 
 ## 後続候補（この設計書の対象外）
 

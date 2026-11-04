@@ -149,9 +149,11 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 
 ## hook
 
-`claude-global/settings.json` は `permissions.deny`（8 件）で `.env` 系・鍵ファイル・`~/.ssh`・`~/.codex/auth.json` の読み取りを塞ぐ。Read の deny は同じパスの Edit / Write と Bash の `cat` / `sed` / リダイレクトにも効くが、スクリプトが自前で開くファイルには効かないので Bash sandbox と併用する。`dcc link-host` は live の `~/.claude/settings.json` が無いときに初期値をコピーするだけなので、既存環境では同じ deny を手で足し、廃止済みの continuous-learning hook を消す。
+`claude-global/settings.json` は `permissions.deny`（8 件）で、任意の深さの `.env` / `.env.local` / `.env.*.local`、`*.pem` / `*.key` / `secrets.json`、`~/.ssh`、`~/.codex/auth.json` の読み取りを塞ぐ。範囲は `.gitignore` と同じで、`.env.example` や `.env.production` などは対象外。[Claude Code の docs](https://code.claude.com/docs/en/permissions) によると、Read の deny は同じパスの Read / Edit / Write ツールと、Bash の `cat` / `head` / `tail` / `sed` と入力リダイレクトに効く。`grep -r` のようにファイル名を書かないコマンドや、スクリプトが自前で開くファイルには効かない。そこは Bash sandbox が担うが、雛形は sandbox を有効にしないので `/sandbox`（または settings の `"sandbox": {"enabled": true}`）で有効にする。
 
-キットは常時有効の hook を持たない。`hooks/check-sensitive-paths.sh`（親ディレクトリ・ホーム・origin 以外への git 操作をブロック）を使いたいプロジェクトだけ `.claude/hooks/` にコピーし、`.claude/settings.json` に登録する（出力は PreToolUse の `hookSpecificOutput.permissionDecision` 形式。振る舞いは `scripts/ci/test-check-sensitive-paths.sh` が `npm test` で確かめる）:
+`dcc link-host` は live の `~/.claude/settings.json` が無いときに初期値をコピーするだけなので、既存環境では同じ deny を手で足し、廃止済みの continuous-learning hook を消す。
+
+キットは常時有効の hook を持たない。`hooks/check-sensitive-paths.sh`（親ディレクトリ・ホーム・origin 以外への git 操作をブロック）を使いたいプロジェクトだけ `.claude/hooks/` にコピーし、`.claude/settings.json` に登録する。`jq` が必要で、無いときや入力を読めないときは exit 2 で全呼び出しを拒否する（fail closed）。出力は PreToolUse の `hookSpecificOutput.permissionDecision` 形式で、振る舞いは `scripts/ci/test-check-sensitive-paths.sh` が `npm test` で確かめる:
 
 ```json
 {

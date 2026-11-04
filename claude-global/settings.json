@@ -75,9 +75,9 @@
       "Bash(gh issue list:*)"
     ],
     "deny": [
-      "Read(./.env)",
-      "Read(./.env.local)",
-      "Read(./.env.*.local)",
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
       "Read(**/*.pem)",
       "Read(**/*.key)",
       "Read(**/secrets.json)",
