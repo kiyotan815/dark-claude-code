@@ -19,7 +19,7 @@ Claude Code（司令塔）が設計と監査を行い、OpenAI Codex CLI（実�
 ## 前提チェック（委譲前に1回）
 
 1. `command -v codex` — 無ければ中止して報告（devcontainer なら postCreate 済みのはず）
-2. 認証 — `~/.codex/auth.json` があるか `OPENAI_API_KEY` が設定されていること。無ければ README の認証手順を案内して中止
+2. 認証 — `~/.codex/auth.json` があるか `OPENAI_API_KEY` が設定されていること（`test -f ~/.codex/auth.json` で存在だけ確かめ、中身は読まない。Read は deny 対象）。無ければ README の認証手順を案内して中止
 3. **Bash sandbox の制約** — Claude Code の Bash sandbox 内では `codex exec` が app-server 初期化で `Operation not permitted` になり、**exit 0 のまま進捗ログが 3 行程度で止まる**。ログが伸びないときは exit code を信用せず sandbox 起因と判断し、そのコマンドだけ sandbox 外で再実行する（permission ゲートを通す）。書き込み範囲は Codex 側の `-s workspace-write` が制限するので、Codex の `--dangerously-bypass-approvals-and-sandbox` は引き続き使わない
 4. sandbox で `find` / `ls` が `Operation not permitted` になる場合は `git ls-files` / `git grep` に切り替える
 
@@ -79,6 +79,46 @@ codex exec -s workspace-write -C ../<proj>-u2 -o "$S/u2-last.md" "$(cat "$S/u2-p
 
 全ユニットのマージ後、依存追加があれば install、コード生成（`prisma generate` 等）を再実行し、統合ブランチでフルテスト・tsc・lint を回す。
 
+## 進捗ファイル（セッションをまたぐ引き継ぎ）
+
+委譲・監査・統合の途中状態は会話と scratchpad にしか残らず、scratchpad はセッション終了で消える。設計書と同じディレクトリに `<設計書名>.progress.md`（例: `docs/feature-x.md` → `docs/feature-x.progress.md`）を置き、新しいセッションが `/dcc:codex-impl <progress ファイル>` で Next action から再開できるようにする。
+
+```markdown
+# Progress: docs/<設計書>.md
+
+## Task
+<1 行要約> / 設計書: docs/<設計書>.md / ベースブランチ: <branch>
+
+## Outputs
+- U1: worktree ../<proj>-u1 / branch codex/u1 / log <S>/u1.log / 最終メッセージ <S>/u1-last.md
+
+## Completed
+- U1: APPROVE（merge <sha>）
+
+## Decisions
+- YYYY-MM-DD U2 を Claude が引き取り（再委譲 3 回で収束せず）
+
+## Open issues
+- U3: FIX REQUIRED（受け入れ条件 2 が UNVERIFIABLE。Missing evidence: <何が見えれば決まるか>）
+
+## Next action
+U3 を auditor の再委譲プロンプトで再委譲する
+
+## Review time / Fixes（任意）
+<監査に掛けた時間と修正量。設定変更の前後比較に使う>
+```
+
+更新するタイミング:
+
+1. 設計書ゲート通過後（Task と Next action）
+2. 各ユニットの委譲開始時（Outputs に worktree・branch・log・`-last.md` のパス）
+3. 各監査 verdict の後（Completed / Open issues / Next action）
+4. 各 merge の後（Completed に merge commit）
+5. commit 前（Open issues を確定し、報告の材料にする）
+
+- 再開時は Outputs の scratchpad パスが消えている前提で、worktree と branch の実状態（`git worktree list`、`git log codex/uN`）を正とする
+- progress ファイルは作業ツリーにだけ置き、commit しない。最終 commit の時点で削除するか、要点を設計書の変更履歴に畳む
+
 ## 監査ループ（Claude の仕事、省略禁止）
 
 0. **自己申告を集約してから始める** — 全ユニットの `-last.md` を順に読み、変更ファイル・テスト結果・残課題をまとめる。自己申告は「どこを見るか」の索引としてだけ使う
@@ -100,3 +140,5 @@ codex exec -s workspace-write -C ../<proj>-u2 -o "$S/u2-last.md" "$(cat "$S/u2-p
 - 委譲したタスクと結果（成功/再委譲回数/引き取り）
 - 監査で見つけた問題と対処
 - 残課題
+
+報告は progress ファイルの Completed / Decisions / Open issues から作る。

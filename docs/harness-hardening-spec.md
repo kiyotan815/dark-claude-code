@@ -129,7 +129,7 @@
   - `grep -c '^## 進捗ファイル' skills/codex-delegate/SKILL.md` が 1
   - `grep -c '^## Task$\|^## Outputs$\|^## Completed$\|^## Decisions$\|^## Open issues$\|^## Next action$' skills/codex-delegate/SKILL.md` が 6（雛形のコードブロック内）
   - `grep -c '\.progress\.md' skills/codex-delegate/SKILL.md` が 1 以上
-  - `awk '/^### 3\. Push to Remote/,/^### 4\./' skills/pr-helper/SKILL.md | grep -c 'ユーザーの確認'` が 1 以上、同範囲で `grep -c 'gh pr list --head'` が 1
+  - `awk '/^### 3\. Push to Remote/,/^### 4\./' skills/pr-helper/SKILL.md | grep -c 'confirmation'` が 1 以上、同範囲で `grep -c 'gh pr list --head'` が 1
   - `node scripts/ci/validate-skills.js` と `npm test` が 0 終了
 - **依存**: なし
 
