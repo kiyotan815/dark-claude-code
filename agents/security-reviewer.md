@@ -37,8 +37,11 @@ git log -p | grep -i "password\|api_key\|secret"   # Secrets in git history
 ## Stack-Specific Checks
 
 When the project uses Supabase and/or Vercel (look for `@supabase/supabase-js`,
-`supabase/config.toml`, `vercel.json`), invoke the **dcc:supabase-vercel-audit**
-skill with the Skill tool. Most real-world breaches on that stack are misconfiguration, not code:
+`supabase/config.toml`, `vercel.json`), load the **dcc:supabase-vercel-audit**
+skill with the Skill tool for its checklist, and review the code side with its
+Layer B brief. Do not run the whole audit or write its report: the main agent
+or `/dcc:security-audit` runs Layers A–E and writes `docs/security/`.
+Most real-world breaches on that stack are misconfiguration, not code:
 RLS disabled, `using (true)` policies, column grants that allow self-privilege
 escalation, `service_role` keys reaching the client, public buckets, unprotected
 cron endpoints and preview deployments. That skill carries the SQL (`queries.sql`)
@@ -343,14 +346,14 @@ Always verify context before flagging.
 ## Emergency Response
 
 If you find a CRITICAL vulnerability:
-1. Document it in a detailed report and alert the project owner immediately
+1. Put it at the top of your findings and ask the main agent to alert the project owner
 2. Provide a secure code example as the proposed fix (the main agent applies it and re-runs this review)
-3. Check whether the vulnerability was already exploited
-4. Rotate any exposed secrets
+3. Name the evidence that would show whether it was already exploited (logs, access records)
+4. List the secrets that need rotation and how to rotate them (do not rotate them yourself)
 
 ## Success Metrics
 
-- No CRITICAL issues remaining; all HIGH issues addressed
+- Every CRITICAL / HIGH finding carries a Verdict, Evidence, and a proposed fix
 - Security checklist complete; no secrets in code
 - Dependencies up to date; tests include security scenarios
 

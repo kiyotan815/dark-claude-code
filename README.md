@@ -114,7 +114,7 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 | `dcc:spec-reviewer` | Codex 委譲前の設計書審査 |
 | `dcc:codex-auditor` | Codex 成果物の監査（境界逸脱・受け入れ条件・テスト再実行） |
 
-いずれも `model: inherit`（セッションのモデルを使う）と `effort: high`。編集権限を持たず、所見は Verdict（verified / incorrect / unresolved）/ Evidence / Missing evidence 付きで返す。修正は本体が行い、修正したファイルだけを再レビューする。
+いずれも `model: inherit`（セッションのモデルを使う）と `effort: high`。Write / Edit ツールを持たない（Bash は調査とテスト再実行のために残る）。code / security / spec-reviewer は所見ごとに Verdict（`verified` = 証拠で確認、`incorrect` = 対象の主張が証拠で否定された欠陥で所見の撤回ではない、`unresolved` = 未確認）と Evidence / Missing evidence を返す。codex-auditor は受け入れ条件ごとに PASS / FAIL / UNVERIFIABLE と Evidence / Missing evidence を返し、FIX REQUIRED なら新規 `codex exec` 用の再委譲プロンプトを書く。修正は本体が行い、修正したファイルだけを再レビューする。
 
 ### skill（15）
 

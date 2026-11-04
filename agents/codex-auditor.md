@@ -63,6 +63,11 @@ Criteria:      [X PASS / Y FAIL / Z UNVERIFIABLE]
 Tests:         [X/Y passed (re-executed)]
 Consistency:   [OK / N issues]
 
+CRITERIA (one line per acceptance criterion)
+- [unit] criterion — PASS / FAIL / UNVERIFIABLE
+  Evidence: [command + output line, or file:line]
+  Missing evidence: [UNVERIFIABLE only: what would settle it]
+
 FINDINGS (severity order)
 - [unit] file:line — what / why it fails the spec
   Evidence: [command + output line, or file:line]
@@ -70,9 +75,11 @@ FINDINGS (severity order)
   → fix: [exact follow-up instruction]
 ```
 
-When the verdict is FIX REQUIRED, write the exact re-delegation prompt for
-`codex exec resume --last` (per the codex-delegate skill), scoped to the
-failing findings only.
+When the verdict is FIX REQUIRED, write the exact re-delegation prompt for a
+new `codex exec` run, scoped to the failing findings only: include what the
+previous run produced and the findings to fix. Do not write it for
+`codex exec resume` (the codex-delegate skill forbids resume for worktree
+delegation).
 
 ## Rules
 
