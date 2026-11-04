@@ -149,7 +149,7 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 
 ## hook
 
-`claude-global/settings.json` は `permissions.deny`（8 件）で、任意の深さの `.env` / `.env.local` / `.env.*.local`、`*.pem` / `*.key` / `secrets.json`、`~/.ssh`、`~/.codex/auth.json` の読み取りを塞ぐ。範囲は `.gitignore` と同じで、`.env.example` や `.env.production` などは対象外。[Claude Code の docs](https://code.claude.com/docs/en/permissions) によると、Read の deny は同じパスの Read / Edit / Write ツールと、Bash の `cat` / `head` / `tail` / `sed` と入力リダイレクトに効く。`grep -r` のようにファイル名を書かないコマンドや、スクリプトが自前で開くファイルには効かない。そこは Bash sandbox が担うが、雛形は sandbox を有効にしないので `/sandbox`（または settings の `"sandbox": {"enabled": true}`）で有効にする。
+`claude-global/settings.json` は `permissions.deny`（8 件）で、作業ディレクトリ配下の任意の深さの `.env` / `.env.local` / `.env.*.local`、`*.pem` / `*.key` / `secrets.json`、`~/.ssh`、`~/.codex/auth.json` の読み取りを塞ぐ。範囲は `.gitignore` と同じで、`.env.example` や `.env.production` などは対象外。親ディレクトリや worktree 並列（`../<proj>-uN/.env`）の `.env` も対象外。[Claude Code の docs](https://code.claude.com/docs/en/permissions) によると、Read の deny は同じパスの Read / Edit / Write ツールと、Bash の `cat` / `head` / `tail` / `sed` と入力リダイレクトに効く。`grep -r` のようにファイル名を書かないコマンドや、スクリプトが自前で開くファイルには効かない。そこは Bash sandbox が担うが、雛形は sandbox を有効にしないので `/sandbox`（または settings の `"sandbox": {"enabled": true}`）で有効にする。
 
 `dcc link-host` は live の `~/.claude/settings.json` が無いときに初期値をコピーするだけなので、既存環境では同じ deny を手で足し、廃止済みの continuous-learning hook を消す。
 
@@ -161,12 +161,21 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
     "PreToolUse": [
       {
         "matcher": "Bash|Read|Edit|Write",
-        "hooks": [{ "type": "command", "command": ".claude/hooks/check-sensitive-paths.sh" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/check-sensitive-paths.sh",
+            "args": [],
+            "onFailure": "block"
+          }
+        ]
       }
     ]
   }
 }
 ```
+
+`"onFailure": "block"`（Claude Code v2.1.295 以降）が無いと、スクリプトが見つからない・実行権が無い・タイムアウトしたときに hook は素通しになる。パスは `${CLAUDE_PROJECT_DIR}` で書き、`args` を付けた exec 形式にして、セッション中に `cd` しても解決できるようにする（[hooks docs](https://code.claude.com/docs/en/hooks)）。
 
 ## MCP 注意点
 
@@ -187,7 +196,7 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 ### 2026-11 長時間タスク向けハーネス強化
 
 - **実行層**: settings 雛形に `.env` / 鍵ファイルの Read deny を追加し、廃止済み hook 4 本を削除。opt-in hook の出力を PreToolUse の現行形式にし、パスに引用符があると JSON が壊れる不具合を修正。push / PR 作成の失敗時は宛先と既存 PR を確認してから再試行
-- **レビューゲート**: 4 agent に `effort: high`、security-reviewer を read-only に。所見に Verdict / Evidence / Missing evidence を付け、修正後は修正ファイルだけを再レビュー
+- **レビューゲート**: 4 agent に `effort: high`、security-reviewer から Write / Edit を外した。code / security / spec-reviewer の所見に Verdict / Evidence / Missing evidence を、codex-auditor の受け入れ条件に Evidence / Missing evidence を付け、修正後は修正ファイルだけを再レビュー
 - **引き継ぎ**: Codex 委譲の途中状態を設計書の隣の progress ファイルに置き、`/dcc:codex-impl` で再開できるようにした。設計書は `docs/harness-hardening-spec.md`
 
 ### 2026-10 棚卸し・plugin 化

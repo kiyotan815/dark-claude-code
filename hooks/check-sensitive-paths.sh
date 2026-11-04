@@ -19,12 +19,16 @@ deny() {
 }
 
 # Read tool information from stdin in JSON format
-input=$(cat)
+input=$(cat) || fail_closed "could not read hook input"
 
 command -v jq >/dev/null 2>&1 || fail_closed "jq not found"
 
-# Get tool name
-tool_name=$(printf '%s' "$input" | jq -r '.tool_name // ""') \
+# Get tool name. The input must be exactly one JSON object with a non-empty
+# string tool_name; anything else (empty, null, several values) fails closed.
+tool_name=$(printf '%s' "$input" | jq -e -s -r '
+    if length == 1 and (.[0] | type) == "object"
+    then .[0].tool_name | strings | select(length > 0)
+    else error("not a single JSON object") end') \
   || fail_closed "invalid hook input"
 
 # Extract path (command for Bash, file_path for Read/Edit/Write)

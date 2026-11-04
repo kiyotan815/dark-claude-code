@@ -219,3 +219,4 @@
 
 - 2026-11-04: 初版。差分レポートの「高」3 項目（実行層・レビューゲート・引き継ぎ）と不整合 2 点（pr-helper の push 承認、codex-impl の commit 確認）
 - 2026-11-04: code-reviewer（Block、HIGH 2 件）と security-reviewer（APPROVE WITH CHANGES）の指摘を反映。hook を jq 不在・壊れた入力で fail closed に、.env の deny を `**/` で任意の深さに、`incorrect` の CRITICAL / HIGH も commit を止める、commit 確認の範囲を作業ブランチへの merge・commit に限定、codex-impl 単独でも progress を作る、progress を `.git/info/exclude` に入れる、など
+- 2026-11-04: 2 回目のレビュー（code-reviewer: Warning、security-reviewer: APPROVE WITH CHANGES。1 回目の指摘はすべて解消）の指摘を反映。spec-reviewer の verdict 定義を契約に揃え、hook は空・null・`{}`・複数値の入力と cat の失敗でも exit 2 に、README の hook 登録例を `${CLAUDE_PROJECT_DIR}` と `"onFailure": "block"` に、deny の範囲を「作業ディレクトリ配下」と明記

@@ -56,11 +56,12 @@ PARALLEL PLAN
 - Wave 1: [units]  Wave 2: [units] (reason for ordering)
 ```
 
-Verdicts apply to the spec's claims about the codebase (paths, interfaces,
-"new file" status): `verified` = matches what you read, `incorrect` =
-contradicted by the code, `unresolved` = could not be checked with
-Read / Grep, so name the missing evidence. For wording-only findings (vague
-criteria, missing boundary), use `verified` and cite the spec line.
+Verdicts apply to each finding: `verified` = the problem is confirmed by
+what you read (cite file:line, or the spec line for wording-only findings
+such as vague criteria or a missing boundary); `incorrect` = a claim in the
+spec (path, interface, "new file" status) is contradicted by the code;
+`unresolved` = could not be checked with Read / Grep, so name the missing
+evidence. Claims that check out are not findings; do not list them.
 
 ## Rules
 

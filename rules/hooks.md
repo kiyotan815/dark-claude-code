@@ -7,7 +7,10 @@ user-global (`~/.claude/settings.json`). The kit ships no always-on hooks.
 `.claude/hooks/` and register it under `PreToolUse` with matcher
 `Bash|Read|Edit|Write`. It blocks parent-directory, home-directory, and
 non-origin git access for that project. It needs `jq`; without it, or on
-unreadable input, it fails closed and blocks every call.
+unreadable input, it fails closed and blocks every call. Register it with
+`${CLAUDE_PROJECT_DIR}` in the path and `"onFailure": "block"` (see the
+README); without `onFailure`, a missing, non-executable, or timed-out hook
+lets the call through.
 
 Prefer the built-in Bash sandbox and `permissions.allow` / `deny` rules over
 custom hooks for access control. Add a hook only for a deterministic,

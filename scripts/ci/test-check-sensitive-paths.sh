@@ -21,6 +21,11 @@ mkdir "$tmp/nojq"
 ln -s "$(command -v cat)" "$tmp/nojq/cat"
 ln -s "$(command -v readlink)" "$tmp/nojq/readlink"
 
+# cat を含まない PATH（jq と readlink だけ）
+mkdir "$tmp/nocat"
+ln -s "$(command -v jq)" "$tmp/nocat/jq"
+ln -s "$(command -v readlink)" "$tmp/nocat/readlink"
+
 # 入力 JSON は jq で組み立てる（パスに引用符やバックスラッシュがあっても壊れない）
 read_input() { jq -nc --arg p "$1" '{tool_name: "Read", tool_input: {file_path: $p}}'; }
 bash_input() { jq -nc --arg c "$1" '{tool_name: "Bash", tool_input: {command: $c}}'; }
@@ -78,6 +83,12 @@ expect_allow "プロジェクト内の絶対パスは素通し"            "$(re
 expect_allow "/dev 配下は素通し"                           "$(read_input '/dev/null')"
 expect_block_exit2 "jq が無ければ exit 2 で拒否"           "$(read_input '../etc/passwd')" "$tmp/nojq"
 expect_block_exit2 "壊れた入力は exit 2 で拒否"            'not json' "$PATH"
+expect_block_exit2 "空の入力は exit 2 で拒否"              '' "$PATH"
+expect_block_exit2 "空白だけの入力は exit 2 で拒否"        '   ' "$PATH"
+expect_block_exit2 "null は exit 2 で拒否"                 'null' "$PATH"
+expect_block_exit2 "tool_name の無いオブジェクトは exit 2 で拒否" '{}' "$PATH"
+expect_block_exit2 "JSON が 2 つ続く入力は exit 2 で拒否" "$(bash_input 'ls')$(bash_input 'ls')" "$PATH"
+expect_block_exit2 "cat が無ければ exit 2 で拒否"          "$(bash_input 'ls')" "$tmp/nocat"
 
 if [ "$failures" -gt 0 ]; then
   echo "$failures test(s) failed"
