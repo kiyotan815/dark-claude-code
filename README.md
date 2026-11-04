@@ -114,7 +114,7 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 | `dcc:spec-reviewer` | Codex 委譲前の設計書審査 |
 | `dcc:codex-auditor` | Codex 成果物の監査（境界逸脱・受け入れ条件・テスト再実行） |
 
-いずれも `model: inherit`（セッションのモデルを使う）。
+いずれも `model: inherit`（セッションのモデルを使う）と `effort: high`。編集権限を持たず、所見は Verdict（verified / incorrect / unresolved）/ Evidence / Missing evidence 付きで返す。修正は本体が行い、修正したファイルだけを再レビューする。
 
 ### skill（15）
 
@@ -128,6 +128,7 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 - 委譲の基本形: `codex exec -s workspace-write -C <dir> -o <最終メッセージ> "$(cat <プロンプト>)" < /dev/null > <進捗ログ> 2>&1 &`。stdin を閉じないと background でハングする。`--dangerously-bypass-approvals-and-sandbox` は使わない
 - 作法の全体（background 実行・worktree 並列・統合手順・監査ループ・sandbox 制約）は `skills/codex-delegate`、設計書の書き方は `skills/codex-spec`。3 か月分の運用で学習した instinct（341 件）のうち高信頼のものを 2026-10 に折り込んだ
 - プロジェクト指示は `AGENTS.md`（`CLAUDE.md` は symlink）が Claude / Codex の両方に効く
+- 長いタスクの状態は設計書の隣の `<設計書名>.progress.md`（Task / Outputs / Completed / Decisions / Open issues / Next action）に置く。新しいセッションでは `/dcc:codex-impl <progress ファイル>` で Next action から再開する。progress ファイルは commit しない
 - MCP 方式（従）: `claude mcp add -s user --transport stdio codex -- codex mcp-server`（`mcp-configs/` に定義あり）。ブロッキングでコンテキストも消費するため skill 方式を推奨
 
 ## ディレクトリ構成
@@ -148,7 +149,9 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 
 ## hook
 
-キットは常時有効の hook を持たない。`hooks/check-sensitive-paths.sh`（親ディレクトリ・ホーム・origin 以外への git 操作をブロック）を使いたいプロジェクトだけ `.claude/hooks/` にコピーし、`.claude/settings.json` に登録する:
+`claude-global/settings.json` は `permissions.deny`（8 件）で `.env` 系・鍵ファイル・`~/.ssh`・`~/.codex/auth.json` の読み取りを塞ぐ。Read の deny は同じパスの Edit / Write と Bash の `cat` / `sed` / リダイレクトにも効くが、スクリプトが自前で開くファイルには効かないので Bash sandbox と併用する。`dcc link-host` は live の `~/.claude/settings.json` が無いときに初期値をコピーするだけなので、既存環境では同じ deny を手で足し、廃止済みの continuous-learning hook を消す。
+
+キットは常時有効の hook を持たない。`hooks/check-sensitive-paths.sh`（親ディレクトリ・ホーム・origin 以外への git 操作をブロック）を使いたいプロジェクトだけ `.claude/hooks/` にコピーし、`.claude/settings.json` に登録する（出力は PreToolUse の `hookSpecificOutput.permissionDecision` 形式。振る舞いは `scripts/ci/test-check-sensitive-paths.sh` が `npm test` で確かめる）:
 
 ```json
 {
@@ -169,7 +172,8 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 
 ## メンテナンス
 
-- `npm test` = `claude plugin validate .` + 構造チェック + eslint / markdownlint。commit 前に通す
+- `npm test` = `claude plugin validate .` + 構造チェック + hook テスト + eslint / markdownlint。commit 前に通す
+- 設定（effort / deny / hook）の変更は 1 つずつ入れ、同じタスク・同じ受け入れ条件で progress ファイルの Review time / Fixes を前後比較してから残す
 - 使用状況は `/skill-doctor`（skill ごとのトークンコストと未使用）と `claude plugin details dcc@dark-claude-code`（常時コスト）で見る
 - 棚卸しは `~/.claude/history.jsonl`（入力履歴、1 年以上残る）と `~/.claude/projects/*/*.jsonl`（直近のセッション記録）で command / Skill / Agent の呼び出し回数を数えて判断する
 - 定期実行したいものは routine（`/schedule`）へ。例: `/dcc:vuln-fix --report` を週 1 で回す
@@ -177,6 +181,12 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 - upstream を見たいときは `everything-claude-code/`（gitignore 済）を clone する
 
 ## カスタマイズ履歴
+
+### 2026-11 長時間タスク向けハーネス強化
+
+- **実行層**: settings 雛形に `.env` / 鍵ファイルの Read deny を追加し、廃止済み hook 4 本を削除。opt-in hook の出力を PreToolUse の現行形式にし、パスに引用符があると JSON が壊れる不具合を修正。push / PR 作成の失敗時は宛先と既存 PR を確認してから再試行
+- **レビューゲート**: 4 agent に `effort: high`、security-reviewer を read-only に。所見に Verdict / Evidence / Missing evidence を付け、修正後は修正ファイルだけを再レビュー
+- **引き継ぎ**: Codex 委譲の途中状態を設計書の隣の progress ファイルに置き、`/dcc:codex-impl` で再開できるようにした。設計書は `docs/harness-hardening-spec.md`
 
 ### 2026-10 棚卸し・plugin 化
 
