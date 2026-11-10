@@ -137,7 +137,7 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 |---|---|
 | `.claude-plugin/` | `plugin.json`（plugin 名 `dcc`）と `marketplace.json`（marketplace 名 `dark-claude-code`、source はこのリポジトリのルート） |
 | `commands/` `agents/` `skills/` | plugin の中身（上記） |
-| `hooks/` | opt-in の hook スクリプト（`check-sensitive-paths.sh`）。plugin としては常時有効にしない |
+| `hooks/` | opt-in の hook スクリプト（`check-sensitive-paths.sh` と、それが読み込む `check-sensitive-paths-bash.sh`）。plugin としては常時有効にしない |
 | `rules/` | 共通ルール。plugin には含めず `~/.claude/rules/` へ symlink / コピー |
 | `claude-global/` | グローバル設定（`CLAUDE.md` / `settings.json` / `statusline.sh` → `~/.claude/`） |
 | `codex-global/` | Codex CLI グローバル設定（`config.toml` / `AGENTS.md` → `~/.codex/`）。`AGENTS.md` は `claude-global/CLAUDE.md` への symlink |
@@ -153,14 +153,14 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 
 `dcc link-host` は live の `~/.claude/settings.json` が無いときに初期値をコピーするだけなので、既存環境では同じ deny を手で足し、廃止済みの continuous-learning hook を消す。
 
-キットは常時有効の hook を持たない。`hooks/check-sensitive-paths.sh`（親ディレクトリ・ホーム・origin 以外への git 操作をブロック）を使いたいプロジェクトだけ `.claude/hooks/` にコピーし、`.claude/settings.json` に登録する。`jq` が必要で、無いときや入力を読めないときは exit 2 で全呼び出しを拒否する（fail closed）。出力は PreToolUse の `hookSpecificOutput.permissionDecision` 形式で、振る舞いは `scripts/ci/test-check-sensitive-paths.sh` が `npm test` で確かめる:
+キットは常時有効の hook を持たない。`hooks/check-sensitive-paths.sh`（親ディレクトリ・ホーム・作業ディレクトリ外の絶対パス・origin 以外への git 操作をブロック）を使いたいプロジェクトだけ、隣の `hooks/check-sensitive-paths-bash.sh`（Bash コマンドの判定。無いと全呼び出しを拒否する）と一緒に `.claude/hooks/` にコピーし、`.claude/settings.json` に登録する。`jq` が必要で、無いときや入力を読めないときは exit 2 で全呼び出しを拒否する（fail closed）。出力は PreToolUse の `hookSpecificOutput.permissionDecision` 形式で、振る舞いは `scripts/ci/test-check-sensitive-paths.sh` が `npm test` で確かめる:
 
 ```json
 {
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Read|Edit|Write",
+        "matcher": "Bash|Read|Edit|Write|Grep|Glob|NotebookEdit",
         "hooks": [
           {
             "type": "command",
@@ -176,6 +176,8 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 ```
 
 `"onFailure": "block"`（Claude Code v2.1.295 以降）が無いと、スクリプトが見つからない・実行権が無い・タイムアウトしたときに hook は素通しになる。パスは `${CLAUDE_PROJECT_DIR}` で書き、`args` を付けた exec 形式にして、セッション中に `cd` しても解決できるようにする（[hooks docs](https://code.claude.com/docs/en/hooks)）。
+
+Bash のコマンドは bash 3.2 の規則（引用符・エスケープ・`;` `|` `&`・リダイレクト・ヒアドキュメント・ヒアストリング・`$(...)`・バッククォート・`sh -c`・`eval`）で単純コマンドと語に分けてから見る。git は許可リスト方式で、知らないサブコマンド（`send-email` など。利用者の alias は展開して見る）、許可リストに無いグローバルオプション・push のオプション（`--rep=` のような省略形や `-uo` のような束ね書きを含む）、許可リストに無い設定キーへの `-c` / `--config-env` / `git config` での書き込み（remote・url・branch・alias・include・`core.pager` など）、許可リストに無い `GIT_*` 環境変数、`HOME` / `XDG_CONFIG_HOME` の差し替えを拒否する。あわせて、origin 以外への push、`remote add` / `set-url` / `rename`、URL からの clone / fetch / pull / submodule add も拒否し、`rebase -x`・`submodule foreach`・`GIT_PAGER` などに渡すコマンド文字列も同じ規則で見る。`.git`・`.git/config`・`.git/hooks`・`.claude/hooks`・`.claude/settings*.json` は Bash からの参照と file ツールでの書き込みを拒否する（大文字小文字・`//`・`/./` の違いも同一視）。絶対パスは先頭の要素が実在するもの（`/etc/...`、`/usr/bin/env` など）だけを拒否し、`grep '/api/'` のような正規表現の語は通す。実在するパスや symlink のディレクトリの下のパスは、symlink をたどった先も見る。64 KB を超えるコマンドは調べずに拒否する。この hook は補助の検知であって防御の本体ではない。何も評価しないので、次は防げない: 実行時にしか決まらない値（変数・コマンドの出力・glob・`xargs` の入力。`bash -c "$(cat <<'EOF' ... EOF)"` のように出力をコマンドにする形も含む）とスクリプト経由の操作、実際のシェル（Claude Code の Bash ツールは利用者のシェルで動き、多くは zsh）が bash 3.2 と違って読む構文（zsh 固有の展開、`$(...)` の中の `case` のパターン、計算式の中の `<<`、改行をまたいでシェルに渡すヒアドキュメント）、別の場所に書いた git ディレクトリの origin への push（`git -C <dir> push origin`。origin という名前を信用しているため）、curl などによる一般的な外部送信。これらを止めるのは deny と sandbox（ネットワーク制限を含む）なので、この hook を入れるプロジェクトでも `/sandbox` を有効にする。判定中に bash がクラッシュしたときは、素通しにせず exit 2 で拒否する。誤検知として、macOS はパスの大文字小文字を区別しないので `/users` のような語も拒否される。sandbox 有効時は一時ファイルを `/tmp` ではなく `$TMPDIR`（`/tmp/claude-*`）に置く（sandbox 無効時の `$TMPDIR` は `/var/folders/...` なので拒否される）。
 
 ## MCP 注意点
 
@@ -198,6 +200,7 @@ plugin 名が `dcc` なので、command は `/dcc:<name>`、agent / skill は `d
 - **実行層**: settings 雛形に `.env` / 鍵ファイルの Read deny を追加し、廃止済み hook 4 本を削除。opt-in hook の出力を PreToolUse の現行形式にし、パスに引用符があると JSON が壊れる不具合を修正。push / PR 作成の失敗時は宛先と既存 PR を確認してから再試行
 - **レビューゲート**: 4 agent に `effort: high`、security-reviewer から Write / Edit を外した。code / security / spec-reviewer の所見に Verdict / Evidence / Missing evidence を、codex-auditor の受け入れ条件に Evidence / Missing evidence を付け、修正後は修正ファイルだけを再レビュー
 - **引き継ぎ**: Codex 委譲の途中状態を設計書の隣の progress ファイルに置き、`/dcc:codex-impl` で再開できるようにした。設計書は `docs/harness-hardening-spec.md`
+- **第 2 段**: opt-in hook を、bash 3.2 の規則でコマンドを語に分けるトークナイザと、git のサブコマンド・オプション・設定キー・環境変数の許可リストで作り直し、レビューで見つかった抜け道（引用符・行継続・`$'...'`・ブレース展開・`sh -c` / `$(...)` / バッククォート / ヒアドキュメントの中の push、branch / alias / include / pager の設定、`HOME` の差し替え、`.git/config` の書き換え、途中の symlink など）を塞いだ。`/dcc:codex-flow` に `/goal` の条件テンプレを追加。statusline のコストを context の token 数 × Sonnet 単価から Claude Code の集計値（`cost.total_cost_usd`）に替え、effort を表示
 
 ### 2026-10 棚卸し・plugin 化
 
