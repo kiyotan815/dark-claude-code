@@ -26,7 +26,7 @@ description: Supabase + Vercel（+ Next.js）構成の情報漏洩リスクを�
 
 実行手段（どれか 1 つ）:
 
-- Supabase MCP: まず `get_advisors(type: "security")`、次に `execute_sql` で queries.sql を 1 本ずつ
+- Supabase MCP: 手順 1 の `get_project_url` が監査対象アプリの Supabase URL（`.env` 系は deny で読めないので利用者に確かめる）と一致したときだけ使う。別プロジェクトにつながっていると別の DB を監査してしまう。呼べない・一致しないなら下の 2 つに切り替える。使えるならまず `get_advisors(type: "security")`、次に `execute_sql` で queries.sql を 1 本ずつ
 - psql: `psql "$DATABASE_URL" -f queries.sql`（Direct connection か Session pooler）
 - ダッシュボード: Advisors → Security を見てから、SQL Editor に queries.sql を貼る
 
