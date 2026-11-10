@@ -206,17 +206,67 @@
 5. 新セッションでダミーの `docs/dummy.progress.md`（Next action に「U2 の監査を実行」）を作り、`/dcc:codex-impl docs/dummy.progress.md` を実行して Next action から続行する旨の応答が出る。確認後にダミーは削除
 6. 結果を README の「## メンテナンス」に 1 行で記録する
 
+## 第 2 段: 後続候補の実装（2026-11-06）
+
+「後続候補」のうち、利用者の判断が要らない 4 件を同じ branch で実装する。`rules/` の整理（項目 1）は symlink で全プロジェクトに即反映され、どこまで削るかは利用者が決めるので対象外のまま残す。
+
+### U8: hook の抜け道を塞ぐ
+
+- **成果物**: `hooks/check-sensitive-paths.sh` が Bash コマンドを単純コマンドと語に分けて判定し、下記の抜け道が塞がった状態
+- **対象ファイル**: `hooks/check-sensitive-paths.sh`、`hooks/check-sensitive-paths-bash.sh`（Bash の判定。800 行の上限に収めるため分けた）、`scripts/ci/test-check-sensitive-paths.sh`、`README.md` の hook 節、`rules/hooks.md`（matcher）
+- **変更箇所**:
+  - Bash: bash 3.2 の規則（引用符・`\`・`$'...'`・行継続・`;` `|` `&`・リダイレクト・ヒアドキュメント・ヒアストリング・`$(...)` / バッククォート・`sh -c`・`eval`）で単純コマンドと語に分ける 1 文字ずつのトークナイザにする。外部コマンド（`tr` 等）を使わず bash 3.2 の機能だけで行う（コマンドが無いと判定が空になり素通しになるため）。ヒアドキュメント・ヒアストリングはシェルに渡すときはコマンドとして、それ以外は引用しない区切りの本文の `$(...)` / バッククォートだけを見る。64 KB を超えるコマンドは拒否
+  - `..`: 語が `..`、`../` 始まり、`/../` を含む、`/..` 終わりのどれかなら拒否する。`git` を含むコマンドでも省略しない（`main..HEAD` のような範囲演算子は該当しない）
+  - git: 語 `git`（または `*/git`）ごとに、グローバルオプションを許可リストで読み飛ばしてサブコマンドを取る。サブコマンドも許可リストで、無いものは利用者の alias なら展開して見て、それ以外は拒否。`push` はオプションを許可リストで見て（省略形・束ね書きは拒否）、最初の位置引数（remote）と `--repo` が `origin` 以外なら拒否。`remote add` / `set-url` / `rename`、許可リストに無いキーへの `-c` / `--config-env` / `git config` の書き込み、節の rename / remove を拒否。`clone` / `ls-remote` / `submodule` は URL を含めば、`fetch` / `pull` / `archive` は最初の引数が URL なら（`://` と `user@host:` はどの位置でも）拒否。`rebase -x`・`difftool -x`・`submodule foreach`・`bisect run` の文字列はコマンドとして見る
+  - ホーム・環境変数: 引用符の外か `"..."` の中の `$HOME` / `${HOME}`、`~` で始まる語、ディレクトリを付けない `cd`（`cd -P`・`builtin cd`・`command -p cd`・リダイレクトだけ付いたものを含む）、`HOME=` / `XDG_CONFIG_HOME=`、許可リストに無い `GIT_*=` を拒否。`GIT_PAGER` / `GIT_EDITOR` / `GIT_SEQUENCE_EDITOR` の値はコマンドとして見る
+  - 絶対パス: 全ての語（リダイレクト先、`=` `@` `,` で区切った各片、`file://` の後ろ、短いオプションにくっついた値、ブレース展開の各候補も）について、作業ディレクトリ・Claude の一時ディレクトリ・無害な `/dev` 以外で、先頭の要素が実在するもの（`/etc/...` など）を拒否。`/api/` のような正規表現の語は先頭要素が無いので通す。実在するパスは symlink をたどった先が外なら拒否
+  - 保護するファイル: `.git`・`.git/config`・`.git/hooks`・`.claude/hooks`・`.claude/settings*.json` について、Bash からの参照と Edit / Write / NotebookEdit での書き込みを拒否（大文字小文字・`//`・`/./` の違いは同一視）
+  - 一時ディレクトリ: `/tmp/claude` の前方一致をやめ、`(/private)?/tmp/claude(-<数字>)?` の直下だけを許可する
+  - Read 系: `file_path` に加えて `path`（Grep / Glob）、`notebook_path`（NotebookEdit）、Glob の `pattern` を見る。登録例の matcher を `Bash|Read|Edit|Write|Grep|Glob|NotebookEdit` にする
+- **触らない**: fail closed の部分（jq・入力検証・cat）と出力形式。fail closed は、作業ディレクトリが `/` のとき、入力の `cwd` がディレクトリでないとき、パスの欄が文字列でないとき、Bash の判定ファイルが無いとき、判定がクラッシュしたとき（サブシェルで動かし、0 / 2 以外の終了は exit 2）にも広げる。1 語のブレースは 16 個、コマンドは 32 KB まで
+- **テスト**: `bash scripts/ci/test-check-sensitive-paths.sh`、`npm test`
+- **手順（TDD 順）**: テストを先に足して現状の hook で新しい拒否ケースが失敗することを確認（RED）→ hook を直して全件成功（GREEN）
+- **受け入れ条件**（テストスクリプトに追加するケース）:
+  - 拒否: `cat ../secret; git status`、`git -C .. status`、`cd ..`、`git push evil origin`、`git push evil main # origin`、`git push --repo=https://example.com/x.git`、`git -c remote.origin.url=https://example.com/x.git push origin main`、`git push https://example.com/x.git main`、`sh -c "git push evil main"`、`echo ok && git push upstream main`、`git remote set-url origin https://example.com/x.git`、`git config remote.origin.url https://example.com/x.git`、`git clone --depth 1 git@example.com:x.git`、`cat $HOME/.ssh/id_rsa`、`cat "${HOME}/.aws/credentials"`、`cat ~root/.profile`、`cd && cat .ssh/id_rsa`、`cat /etc/passwd`、`ls 2>/etc/x`、`cat /tmp/claude-evil/x`、Read の `/tmp/claude-evil/x`、Grep の `path: /etc`、Glob の `path: ..`、Glob の `pattern: /etc/*`、NotebookEdit の `notebook_path: /etc/x.ipynb`
+  - 素通し: `git diff HEAD~1..`、`git log ..origin/main`、`git push`、`git push -u origin feat/x`、`git push -o ci.skip origin main`、`git config --get remote.origin.url`、`grep -E '/api/' src`、`ls 2>/dev/null`、作業ディレクトリ内の絶対パスを含む `cat`、`/tmp/claude/x` と `/private/tmp/claude-501/x` の Read、`path` 無しの Grep
+  - 既存の 20 ケースが引き続き成功し、`npm test` が 0 終了
+- **依存**: なし
+
+### U9: 長時間タスクの始め方（`/goal` と事前確認）
+
+- **成果物**: `commands/codex-flow.md` に「長時間走らせるとき」節があり、利用者が打つ事前確認（`/context` `/agents` `/permissions`）と `/goal` の条件テンプレが書かれた状態
+- **対象ファイル**: `commands/codex-flow.md`
+- **要点**: `/goal` の評価役は会話に出た内容しか見ないので、progress ファイルとテスト結果を出力させる条件にする。設計書ゲートより前に設定すると確認待ちでも評価が回るので、ゲートで「続行」の代わりに設定する。commit・merge しないことを条件に入れ、ターン上限を付ける
+- **受け入れ条件**: `grep -c '/goal' commands/codex-flow.md` が 1 以上、`grep -q '/permissions' commands/codex-flow.md` が成功、`npm test` が 0 終了
+- **依存**: なし
+
+### U10: statusline のコストを Claude Code の集計値にする
+
+- **成果物**: `claude-global/statusline.sh` がコストを `cost.total_cost_usd`（セッション累計の推定額）から表示し、`effort.level` があればモデル名の横に出す状態
+- **対象ファイル**: `claude-global/statusline.sh`、`scripts/ci/test-statusline.sh`（新規）、`package.json` の `validate`
+- **背景**: 現状は `context_window.total_input_tokens`（いま context にある token 数）に Sonnet の単価を掛けており、累計の費用でもモデル別の単価でもない
+- **受け入れ条件**: `cost.total_cost_usd: 1.234` の入力で出力に `$1.23`、`cost` 無しで `$0.00`、`effort.level: "high"` で `high` を含み、`current_usage: null` でも exit 0。`npm test` が 0 終了
+- **依存**: なし
+
+### U11: 監査 skill の MCP 接続先確認
+
+- **成果物**: `skills/supabase-vercel-audit/SKILL.md` の Layer A「実行手段」に、Supabase MCP を使う前に `get_project_url` で接続先が監査対象かを確かめる 1 行がある状態
+- **対象ファイル**: `skills/supabase-vercel-audit/SKILL.md`
+- **受け入れ条件**: `grep 'Supabase MCP:' skills/supabase-vercel-audit/SKILL.md | grep -q 'get_project_url'` が成功、`npm test` が 0 終了
+- **依存**: なし
+
 ## 後続候補（この設計書の対象外）
 
-- 項目 1（中）: `rules/` の整理（`rules/hooks.md` のキット説明、`rules/agents.md` のカタログ、`rules/patterns.md` の Skeleton Projects）と TDD 手順の 3 重化解消
-- 項目 6（中）: `commands/codex-flow.md` の手順 0 に `/context` `/agents` `/permissions` の構成確認。本体 effort を下げるかは項目 9 の計測で判断
-- 項目 7（中）: codex-flow 用の `/goal` 条件テンプレ（「全ユニットが codex-auditor で APPROVE、統合ブランチでテストが 0 終了、progress の Open issues が明示。or stop after 12 turns」）
-- 項目 9（中）: `claude-global/statusline.sh` のコスト単価の更新
-- 項目 3（低）: supabase-vercel-audit の Layer A 冒頭に MCP 疎通確認 1 行
-- hook の既存の抜け道（2026-11-04 のレビューで判明。判定ロジックの変更になるので対象外）: コマンドのどこかに `git` と空白が続くと `..` の判定を飛ばす、空白付きの `origin` が部分一致すれば origin 以外へ push できる、`/tmp/claude` の前方一致で `/tmp/claude-evil/` も許可する、`$HOME/...` やコマンド途中の絶対パスを見ない、Grep / Glob の `path` を見ない
+- 項目 1（中）: `rules/` の整理（`rules/hooks.md` のキット説明、`rules/agents.md` のカタログ、`rules/patterns.md` の Skeleton Projects）と TDD 手順の 3 重化解消。symlink で全プロジェクトに即反映されるので、残す範囲を利用者が決めてから
+- 項目 6（中）の残り: 本体 effort を下げるかの判断。statusline に effort とコスト（U10）が出るので、数セッション分を見てから決める
+- hook で塞げないもの（2026-11-09 の 2 回目のレビュー後、利用者の判断でレビューの往復を打ち切った。強制力は deny と sandbox が担う）: 実行時にしか決まらない値（変数・コマンドの出力・glob・`xargs` の入力。`bash -c "$(cat <<'EOF' ... EOF)"` も含む）、スクリプト経由の操作、実際のシェル（多くは zsh）が bash 3.2 と違って読む構文（zsh 固有の展開・`${~HOME}`・glob 修飾子、`$(...)` の中の `case` のパターン、計算式の中の `<<`、改行をまたいでシェルに渡すヒアドキュメント、`{ cd; }` のような複合コマンドの中の cd）、別の場所に書いた git ディレクトリの origin への push（`git -C <dir> push origin`、`--git-dir`）、`read` / `export` で組み立てる環境変数、`env -S` / `bash -c -x` の文字列、パラメータ展開の既定値（`${u:-/etc/passwd}`）、`ln -s .git g` のような別名経由の `.git` 書き込みと `.git/config.worktree`、`:` で区切った `..`（`docker -v ..:/h`）、git の proxy 設定、curl などによる一般的な外部送信。macOS ではパスの大文字小文字を区別しないため `/users` のような語も拒否される。`.git/hooks` を含む語（`grep -rn ".git/hooks" docs`）や `PATH=/opt/homebrew/bin:$PATH` も拒否される（安全側の誤検知）
+- idc-app と tamagohub-app の hook コピーの更新（利用者作業）
 
 ## 変更履歴
 
 - 2026-11-04: 初版。差分レポートの「高」3 項目（実行層・レビューゲート・引き継ぎ）と不整合 2 点（pr-helper の push 承認、codex-impl の commit 確認）
 - 2026-11-04: code-reviewer（Block、HIGH 2 件）と security-reviewer（APPROVE WITH CHANGES）の指摘を反映。hook を jq 不在・壊れた入力で fail closed に、.env の deny を `**/` で任意の深さに、`incorrect` の CRITICAL / HIGH も commit を止める、commit 確認の範囲を作業ブランチへの merge・commit に限定、codex-impl 単独でも progress を作る、progress を `.git/info/exclude` に入れる、など
 - 2026-11-04: 2 回目のレビュー（code-reviewer: Warning、security-reviewer: APPROVE WITH CHANGES。1 回目の指摘はすべて解消）の指摘を反映。spec-reviewer の verdict 定義を契約に揃え、hook は空・null・`{}`・複数値の入力と cat の失敗でも exit 2 に、README の hook 登録例を `${CLAUDE_PROJECT_DIR}` と `"onFailure": "block"` に、deny の範囲を「作業ディレクトリ配下」と明記
+- 2026-11-06: 第 2 段（U8〜U11）を追加。後続候補のうち hook の抜け道、`/goal` テンプレと事前確認（項目 6・7）、statusline のコスト（項目 9）、MCP の接続先確認（項目 3）を実装し、後続候補を残りだけにした
+- 2026-11-09: 第 2 段の 1 回目のレビュー（code-reviewer: Block、HIGH 2 件。security-reviewer: APPROVE WITH CHANGES、HIGH 7 件）を反映。hook を bash と同じ規則で語に分けるトークナイザと git オプションの許可リストで作り直し、branch / alias / include の設定、`.git/config` の書き換え、途中の symlink、`/dev/tcp` なども塞いだ。statusline のコストはロケールに依らない整数計算に、codex-flow の `/goal` 節に permission mode の注意を追加
+- 2026-11-09: 第 2 段の 2 回目のレビュー（code-reviewer: Block、HIGH 6 件。security-reviewer: BLOCK、HIGH 7 件）。`>&-`、`bash -c --`、入れ子のバッククォート、引用しない区切りのヒアドキュメント、ヒアストリングと `source`、`HOME` / `XDG_CONFIG_HOME` と `GIT_*` の差し替え、`.GIT/config` などの表記ゆれ、symlink のディレクトリ越しの新規ファイル、`rebase -x` / `submodule foreach` / `core.pager` に隠したコマンド、`send-pack` などのサブコマンドを塞ぎ、git のサブコマンド・設定キー・環境変数も許可リストにした。判定のクラッシュで素通しになる問題は、判定をサブシェルで動かして exit 2 にし、ブレース数とコマンド長に上限を付けた。直すたびにシェルの解釈のずれから新しい抜け道が出るため、利用者の判断でここでレビューの往復を打ち切り、残りは「後続候補」の「hook で塞げないもの」に記録した
