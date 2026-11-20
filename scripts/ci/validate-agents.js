@@ -7,7 +7,8 @@ const fs = require('fs');
 const path = require('path');
 
 const AGENTS_DIR = path.join(__dirname, '../../agents');
-const REQUIRED_FIELDS = ['model', 'tools'];
+const REQUIRED_FIELDS = ['model', 'tools', 'effort'];
+const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
 
 function extractFrontmatter(content) {
   // Strip BOM if present (UTF-8 BOM: \uFEFF)
@@ -54,6 +55,11 @@ function validateAgents() {
         console.error(`ERROR: ${file} - Missing required field: ${field}`);
         hasErrors = true;
       }
+    }
+
+    if (frontmatter.effort && !EFFORT_LEVELS.includes(frontmatter.effort)) {
+      console.error(`ERROR: ${file} - Invalid effort: ${frontmatter.effort} (expected one of ${EFFORT_LEVELS.join(', ')})`);
+      hasErrors = true;
     }
   }
 

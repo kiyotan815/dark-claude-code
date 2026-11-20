@@ -74,6 +74,16 @@
       "Bash(gh issue view:*)",
       "Bash(gh issue list:*)"
     ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/secrets.json)",
+      "Read(~/.ssh/**)",
+      "Read(~/.codex/auth.json)"
+    ],
     "defaultMode": "acceptEdits"
   },
   "model": "claude-fable-5[1m]",
@@ -88,49 +98,5 @@
   "effortLevel": "xhigh",
   "tui": "fullscreen",
   "theme": "dark-daltonized",
-  "skipAutoPermissionPrompt": true,
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "s=\"$HOME/.claude/skills/continuous-learning-v2/hooks/observe.sh\"; [ -x \"$s\" ] && \"$s\" prompt; exit 0"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "s=\"$HOME/.claude/skills/continuous-learning-v2/hooks/observe.sh\"; [ -x \"$s\" ] && \"$s\" pre; exit 0"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "s=\"$HOME/.claude/skills/continuous-learning-v2/hooks/observe.sh\"; [ -x \"$s\" ] && \"$s\" post; exit 0"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "s=\"$HOME/.claude/skills/continuous-learning-v2/agents/start-observer.sh\"; [ -x \"$s\" ] && \"$s\" start >/dev/null 2>&1; exit 0"
-          }
-        ]
-      }
-    ]
-  }
+  "skipAutoPermissionPrompt": true
 }

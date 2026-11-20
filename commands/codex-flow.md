@@ -10,13 +10,26 @@ $ARGUMENTS で渡されたタスクを、設計 → 委譲実装 → 監査ま�
 
 1. 要件が曖昧で設計を固められない場合のみ、着手前にユーザーへ確認する（固められるなら途中で止まらない）
 2. **dcc:codex-spec skill** で設計書を作成し `docs/` 配下に書き出す（ユニット分割・受け入れ条件・並列マップ）
-3. **設計書レビューゲート** — まず **dcc:spec-reviewer agent** で設計書を審査（ユニット独立性・受け入れ条件の検証可能性・境界・並列計画）し、NEEDS REVISION なら直してから、設計書のパスと要点（ユニット一覧・並列計画・レビュー所見）を提示してユーザーの確認を待つ。「続行」で委譲へ、修正指示があれば設計書を直して再提示、「中止」なら設計書を残して終了
+3. **設計書レビューゲート** — まず **dcc:spec-reviewer agent** で設計書を審査（ユニット独立性・受け入れ条件の検証可能性・境界・並列計画）し、NEEDS REVISION なら直してから、設計書のパスと要点（ユニット一覧・並列計画・レビュー所見）を提示してユーザーの確認を待つ。「続行」（または下記「長時間走らせるとき」の `/goal`）で委譲へ、修正指示があれば設計書を直して再提示、「中止」なら設計書を残して終了。「続行」（または `/goal`）の時点で設計書の隣に `<設計書名>.progress.md` を作る（雛形と更新タイミングは dcc:codex-delegate skill の「進捗ファイル」節）
 4. **dcc:codex-delegate skill** で各ユニットを `codex exec` に委譲する（競合しなければ worktree 並列）
-5. 監査ループを回す — **dcc:codex-auditor agent** で監査（境界逸脱・受け入れ条件突合・テスト再実行・ユニット間整合）。FIX REQUIRED は auditor の再委譲プロンプトで再委譲、収束しなければ Claude が引き取る
-6. 結果を報告する: 設計書パス / ユニットごとの結果（成功・再委譲回数・引き取り） / 監査所見 / 残課題
-7. **commit はユーザーの確認を得てから行う** — 自動 commit はしない
+5. 監査ループを回す — **dcc:codex-auditor agent** で監査（境界逸脱・受け入れ条件突合・テスト再実行・ユニット間整合）。FIX REQUIRED は auditor の再委譲プロンプトで再委譲、収束しなければ Claude が引き取る。監査結果（APPROVE / FIX REQUIRED）ごとに progress ファイルの Completed / Open issues / Next action を更新する
+6. 結果を報告する: 設計書パス / ユニットごとの結果（成功・再委譲回数・引き取り） / 監査所見 / 残課題。progress ファイルの Completed / Decisions / Open issues から作る
+7. **作業ブランチへの merge・commit はユーザーの確認を得てから行う** — 自動 commit はしない（worktree 委譲のユニット branch `codex/uN` 上の commit は監査 APPROVE 後に行ってよい）
 
 人間のレビューポイントは2箇所: 設計書ゲート（手順3）と commit 前（手順7）。
+
+途中で止まったら、新しいセッションで `/dcc:codex-impl <progress ファイル>` を実行すれば Next action から再開できる。
+
+長時間走らせるとき:
+
+- 着手前に利用者が `/context`（常駐コンテキストの量）、`/agents`（4 agent が effort high か）、`/permissions`（deny が入っているか）を確かめる。Claude はこれらを実行できない
+- ユニットが多く数時間かかりそうなら、設計書ゲート（手順 3）で「続行」と答える代わりに `/goal` で完了条件を渡す。条件文が続行の指示を兼ねる。評価役のモデルは会話に出た内容しか見ないので、progress ファイルとテスト結果を出力させる条件にする
+- ゲートより前に `/goal` を設定しない。確認待ちのターンでも評価が回り、ゲートを越えて進もうとする
+- `/goal` は permission mode を変えない。Manual mode ではツール呼び出しごとに確認が出て止まるので、無人で走らせるなら auto mode にするか、使うコマンドを `permissions.allow` に入れておく
+
+```text
+/goal 設計書ゲートは承認済み。<設計書名>.progress.md の Completed に全ユニットがあり、各ユニットの dcc:codex-auditor の判定が APPROVE で、統合ブランチで <テストコマンド> が exit 0 になったことを、progress ファイルとテスト結果を出力して示す。Open issues は空か、残課題として明記されている。作業ブランチへの commit・merge はしない。または 12 ターンで止め、progress ファイルを更新して報告する
+```
 
 使い分け:
 

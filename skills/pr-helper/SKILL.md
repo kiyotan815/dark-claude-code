@@ -48,6 +48,8 @@ git diff origin/main...HEAD
 
 ### 3. Push to Remote
 
+Pushing publishes the commits. Show the branch name and a summary of `git log origin/main..HEAD --oneline`, and get the user's confirmation before pushing.
+
 If not already pushed, push to remote (run with dangerouslyDisableSandbox: true):
 
 ```bash
@@ -55,6 +57,8 @@ git push -u origin <branch-name>
 ```
 
 **Note**: git push requires connection to remote repository, so `dangerouslyDisableSandbox: true` must be specified. This parameter is per-command and doesn't affect subsequent commands.
+
+If the push or `gh pr create` times out or fails, do not re-run it blindly. Check the destination and existing PRs with `git remote -v` and `gh pr list --head <branch-name>` first, then retry. This prevents duplicate PRs and pushes to the wrong remote.
 
 ### 4. Create Pull Request Description File
 

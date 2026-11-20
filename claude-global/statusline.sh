@@ -13,6 +13,7 @@ input=$(cat)
 
 # Extract values
 model_name=$(echo "$input" | jq -r '.model.display_name')
+effort_level=$(echo "$input" | jq -r '.effort.level // empty')
 git_branch=$(git branch --show-current 2>/dev/null || echo "-")
 git_changes=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
 work_dir=$(echo "$input" | jq -r '.workspace.current_dir' | xargs basename)
@@ -47,10 +48,20 @@ else
     context_info="░░░░░░░░░░ 0%"
 fi
 
-# Cost calculation
-input_cost=$(echo "scale=4; $total_input * 3.00 / 1000000" | bc)
-output_cost=$(echo "scale=4; $total_output * 15.00 / 1000000" | bc)
-total_cost=$(echo "scale=2; $input_cost + $output_cost" | bc)
+# Cost: Claude Code's session-total estimate (list price, or modelPricing).
+# Token counts above are only what is in the context window now, so they
+# cannot give a cost.
+# Formatted from integer cents so the decimal point does not depend on locale.
+cost_cents=$(echo "$input" | jq -r '(.cost.total_cost_usd // 0) * 100 | round')
+cost_cents=${cost_cents:-0}
+total_cost="$((cost_cents / 100)).$(printf '%02d' $((cost_cents % 100)))"
+
+# Effort level, when the model supports it
+if [ -n "$effort_level" ]; then
+    model_display="${model_name} (${effort_level})"
+else
+    model_display="$model_name"
+fi
 
 # Git changes
 if [ "$git_changes" -eq 0 ]; then
@@ -60,4 +71,4 @@ else
 fi
 
 # Format output
-echo "${CYAN}${model_name}${RESET} | ${context_info} | ${BLUE}${input_k}K/${output_k}K${RESET} | ${GREEN}\$${total_cost}${RESET} | ${work_dir} | ${git_branch}(${changes_display})"
+echo "${CYAN}${model_display}${RESET} | ${context_info} | ${BLUE}${input_k}K/${output_k}K${RESET} | ${GREEN}\$${total_cost}${RESET} | ${work_dir} | ${git_branch}(${changes_display})"
